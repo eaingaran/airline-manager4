@@ -34,6 +34,9 @@ password = os.environ.get('PASSWORD')
 fuel_price_threshold = os.environ.get('MAX_BUY_FUEL_PRICE')
 co2_price_threshold = os.environ.get('MAX_BUY_CO2_PRICE')
 
+LOGGER.info(f'fuel price threshold is set at {fuel_price_threshold}')
+LOGGER.info(f'co2 price threshold is set at {co2_price_threshold}')
+
 w_driver = None
 
 
@@ -126,7 +129,7 @@ def perform_routine_ops():
     fuel_price, fuel_capacity = get_fuel_stats()
     fuel_price_num = int(fuel_price.replace('$', '').replace(',', '').replace(' ', ''))
     fuel_capacity_num = int(fuel_capacity.replace(',', '').replace(' ', ''))
-    if fuel_price_num < 400 if fuel_price_threshold is None else int(fuel_price_threshold):
+    if fuel_price_num < (400 if fuel_price_threshold is None else int(fuel_price_threshold)):
         balance = get_balance()
         if (fuel_capacity_num * fuel_price_num)/1000 < balance:
             buy_fuel(fuel_capacity_num)
@@ -141,7 +144,7 @@ def perform_routine_ops():
     co2_price, co2_capacity = get_co2_stats()
     co2_price_num = int(co2_price.replace('$', '').replace(',', '').replace(' ', ''))
     co2_capacity_num = int(co2_capacity.replace(',', '').replace(' ', ''))
-    if co2_price_num < 111 if co2_price_threshold is None else int(co2_price_threshold):
+    if co2_price_num < (111 if co2_price_threshold is None else int(co2_price_threshold)):
         balance = get_balance()
         if (co2_capacity_num * co2_price_num)/1000 < balance:
             buy_co2(co2_capacity_num)
