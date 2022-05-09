@@ -9,6 +9,21 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+import logging
+from logging.config import fileConfig
+
+fileConfig('logger.cfg')
+LOGGER = logging.getLogger()
+
+if 'LOG_LEVEL' in os.environ:
+    log_levels = {'NOTSET': 0, 'DEBUG': 10, 'INFO': 20, 'WARN': 30, 'ERROR': 40, 'CRITICAL': 50}
+    if os.environ.get('LOG_LEVEL') in log_levels:
+        LOGGER.setLevel(log_levels[os.environ.get('LOG_LEVEL')])
+    else:
+        LOGGER.error(f'LOG_LEVEL {os.environ.get("LOG_LEVEL")} is not a valid level. using {LOGGER.level}')
+else:
+    LOGGER.warning(f'LOG_LEVEL not set. current log level is {LOGGER.level}')
+
 
 app_name = 'Airline Manager Automation'
 
@@ -63,7 +78,7 @@ def get_fuel_stats():
     driver.get('https://www.airline4.net/fuel.php')
     price = driver.find_element(By.XPATH, '/html/body/div/div/div[1]/span[2]/b').text
     capacity = driver.find_element(By.ID, 'remCapacity').text
-    print(f'Capacity Remaining is {capacity} and current fuel price is {price}')
+    LOGGER.info(f'Capacity Remaining is {capacity} and current fuel price is {price}')
     return price, capacity
 
 
@@ -72,14 +87,14 @@ def get_co2_stats():
     driver.get('https://www.airline4.net/co2.php')
     price = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/span[2]/b').text
     capacity = driver.find_element(By.ID, 'remCapacity').text
-    print(f'Capacity Remaining is {capacity} and current co2 price is {price}')
+    LOGGER.info(f'Capacity Remaining is {capacity} and current co2 price is {price}')
     return price, capacity
 
 
 def depart_planes():
     driver = get_driver()
     driver.get('https://www.airline4.net/route_depart.php?mode=all&ids=x')
-    print('all planes departed')
+    LOGGER.info('all planes departed')
 
 
 def get_balance():
@@ -87,20 +102,20 @@ def get_balance():
     driver.get('https://www.airline4.net/')
     WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, 'headerAccount')))
     balance = driver.find_element(By.ID, 'headerAccount').text
-    print(f'Account balance is {balance}')
+    LOGGER.info(f'Account balance is {balance}')
     return int(balance.replace(',', ''))
 
 
 def buy_fuel(quantity):
     driver = get_driver()
     driver.get(f'https://www.airline4.net/fuel.php?mode=do&amount={quantity}')
-    print(f'bought {quantity} fuel')
+    LOGGER.info(f'bought {quantity} fuel')
 
 
 def buy_co2(quantity):
     driver = get_driver()
     driver.get(f'https://www.airline4.net/co2.php?mode=do&amount={quantity}')
-    print(f'bought {quantity} co2 quota')
+    LOGGER.info(f'bought {quantity} co2 quota')
 
 
 def perform_routine_ops():
@@ -120,7 +135,7 @@ def perform_routine_ops():
             purchase_qty = (balance * 1000) / fuel_price_num
             buy_fuel(purchase_qty)
     else:
-        print(f'fuel price is too high to buy...')
+        LOGGER.info(f'fuel price is too high to buy...')
 
     # co2 checks
     co2_price, co2_capacity = get_co2_stats()
@@ -135,7 +150,7 @@ def perform_routine_ops():
             purchase_qty = (balance * 1000)/co2_price_num
             buy_co2(purchase_qty)
     else:
-        print(f'co2 price is too high to buy...')
+        LOGGER.info(f'co2 price is too high to buy...')
 
 
 @app.route('/')
