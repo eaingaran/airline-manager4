@@ -19,13 +19,6 @@ password = os.environ.get('PASSWORD')
 fuel_price_threshold = os.environ.get('MAX_BUY_FUEL_PRICE')
 co2_price_threshold = os.environ.get('MAX_BUY_CO2_PRICE')
 
-
-if all(key in os.environ for key in ('USERNAME', 'PASSWORD')):
-    username = os.environ.get('USERNAME')
-    password = os.environ.get('PASSWORD')
-else:
-    username, password = None, None
-
 w_driver = None
 
 
