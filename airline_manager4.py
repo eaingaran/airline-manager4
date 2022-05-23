@@ -1,4 +1,6 @@
+import json
 import os
+import requests
 
 from flask import Flask
 
@@ -154,6 +156,51 @@ def perform_routine_ops():
             buy_co2(purchase_qty)
     else:
         LOGGER.info(f'co2 price is too high to buy...')
+
+
+def set_ticket_price(route_id, e, b, f):
+    driver = get_driver()
+    driver.get(f'https://www.airline4.net/set_ticket_prices.php?e={e}&b={b}&f={f}&id={route_id}')
+
+
+def get_routes():
+    route_list = []
+    driver = get_driver()
+    start = 0
+    while True:
+        driver.get(f'https://www.airline4.net/routes.php?start={start}')
+        routes_container = driver.find_element(By.ID, 'routesContainer')
+        elements = routes_container.find_elements(by=By.CLASS_NAME, value='m-text')
+        for element in elements:
+            route_id = element.get_property('id').replace('routeMainList', '')
+            route_desc = element.find_element(By.XPATH, f'//*[@id="routeMainList{route_id}"]/div[1]/div/div[2]/span').text
+            ticket_price = get_route_details(route_desc.split(' - ')[0], route_desc.split(' - ')[1])[1]['realism']
+            route_list.append({'route_id': route_id, 'route_desc': route_desc, 'ticket_price': ticket_price})
+        if len(elements) == 20:
+            start += 20
+        else:
+            break
+
+    return route_list
+
+
+def get_route_details(departure, arrival):
+    response = requests.get(f'https://am4tools.com/route/ticket?type=pax&mode=normal&departure={departure}&arrival={arrival}')
+    if response.status_code == 200:
+        route_details = json.loads(response.text)
+    else:
+        route_details = None
+    return route_details['routes'][0], route_details['ticket']
+
+
+@app.route('/update_ticket_price')
+def update_ticket_price():
+    login(username, password)
+    route_list = get_routes()
+    for route in route_list:
+        set_ticket_price(route['route_id'], route['ticket_price']['ticketY'],
+                         route['ticket_price']['ticketJ'], route['ticket_price']['ticketF'])
+    logout()
 
 
 @app.route('/')
