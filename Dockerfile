@@ -9,8 +9,8 @@ RUN sudo apt install -y python3-pip
 COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
 
-COPY airline-manager4.py airline-manager4.py
+COPY airline_manager4.py airline_manager4.py
 COPY logger.cfg logger.cfg
 EXPOSE 8080
 
-CMD ["python3", "airline-manager4.py"]
+CMD ["python3", "airline_manager4.py"]
