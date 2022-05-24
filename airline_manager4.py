@@ -33,11 +33,19 @@ app = Flask(app_name)
 
 username = os.environ.get('USERNAME')
 password = os.environ.get('PASSWORD')
-fuel_price_threshold = os.environ.get('MAX_BUY_FUEL_PRICE')
-co2_price_threshold = os.environ.get('MAX_BUY_CO2_PRICE')
+fuel_price_threshold = os.environ.get('MAX_BUY_FUEL_PRICE', 400)
+low_fuel_level = os.environ.get('LOW_FUEL_LEVEL', 10000000)
+low_fuel_price_threshold = os.environ.get('MAX_BUY_LOW_FUEL_PRICE', 800)
+co2_price_threshold = os.environ.get('MAX_BUY_CO2_PRICE', 111)
+low_co2_level = os.environ.get('LOW_CO2_LEVEL', 10000000)
+low_co2_price_threshold = os.environ.get('MAX_BUY_LOW_CO2_PRICE', 140)
 
-LOGGER.info(f'fuel price threshold is set at {fuel_price_threshold}')
-LOGGER.info(f'co2 price threshold is set at {co2_price_threshold}')
+LOGGER.info(f'fuel tank will be filled if the price is less than ${fuel_price_threshold}')
+LOGGER.info(f'if the fuel tank has less than {low_fuel_level} lbs, difference will be purchased if the fuel price is '
+            f'below ${low_fuel_price_threshold}')
+LOGGER.info(f'co2 quota will be filled if the price is less than ${co2_price_threshold}')
+LOGGER.info(f'if the co2 quota is less than {low_co2_level} lbs, difference will be purchased if the co2 quota price '
+            f'is below ${low_co2_price_threshold}')
 
 w_driver = None
 
@@ -83,8 +91,9 @@ def get_fuel_stats():
     driver.get('https://www.airline4.net/fuel.php')
     price = driver.find_element(By.XPATH, '/html/body/div/div/div[1]/span[2]/b').text
     capacity = driver.find_element(By.ID, 'remCapacity').text
-    LOGGER.info(f'Capacity Remaining is {capacity} and current fuel price is {price}')
-    return price, capacity
+    holding = driver.find_element(By.ID, 'holding').text
+    LOGGER.info(f'Holding {holding} and capacity Remaining is {capacity} and current fuel price is {price}')
+    return price, capacity, holding
 
 
 def get_co2_stats():
@@ -92,8 +101,9 @@ def get_co2_stats():
     driver.get('https://www.airline4.net/co2.php')
     price = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/span[2]/b').text
     capacity = driver.find_element(By.ID, 'remCapacity').text
-    LOGGER.info(f'Capacity Remaining is {capacity} and current co2 price is {price}')
-    return price, capacity
+    holding = driver.find_element(By.ID, 'holding').text
+    LOGGER.info(f'Holding {holding} and capacity Remaining is {capacity} and current co2 price is {price}')
+    return price, capacity, holding
 
 
 def depart_planes():
@@ -128,14 +138,21 @@ def perform_routine_ops():
     depart_planes()
 
     # fuel checks
-    fuel_price, fuel_capacity = get_fuel_stats()
+    fuel_price, fuel_capacity, fuel_holding = get_fuel_stats()
     fuel_price_num = int(fuel_price.replace('$', '').replace(',', '').replace(' ', ''))
     fuel_capacity_num = int(fuel_capacity.replace(',', '').replace(' ', ''))
-    if fuel_price_num < (400 if fuel_price_threshold is None else int(fuel_price_threshold)):
+    fuel_holding_num = int(fuel_holding.replace(',', '').replace(' ', ''))
+    if fuel_price_num < int(fuel_price_threshold):
         balance = get_balance()
         if (fuel_capacity_num * fuel_price_num)/1000 < balance:
             buy_fuel(fuel_capacity_num)
-            pass
+        else:
+            purchase_qty = (balance * 1000) / fuel_price_num
+            buy_fuel(purchase_qty)
+    elif fuel_holding_num < int(low_fuel_level) and fuel_price_num < int(low_fuel_price_threshold):
+        balance = get_balance()
+        if ((int(low_fuel_level) - fuel_holding_num) * fuel_price_num) / 1000 < balance:
+            buy_fuel(int(low_fuel_level) - fuel_holding_num)
         else:
             purchase_qty = (balance * 1000) / fuel_price_num
             buy_fuel(purchase_qty)
@@ -143,9 +160,10 @@ def perform_routine_ops():
         LOGGER.info(f'fuel price is too high to buy...')
 
     # co2 checks
-    co2_price, co2_capacity = get_co2_stats()
+    co2_price, co2_capacity, co2_holding = get_co2_stats()
     co2_price_num = int(co2_price.replace('$', '').replace(',', '').replace(' ', ''))
     co2_capacity_num = int(co2_capacity.replace(',', '').replace(' ', ''))
+    co2_holding_num = int(co2_holding.replace(',', '').replace(' ', ''))
     if co2_price_num < (111 if co2_price_threshold is None else int(co2_price_threshold)):
         balance = get_balance()
         if (co2_capacity_num * co2_price_num)/1000 < balance:
@@ -153,6 +171,13 @@ def perform_routine_ops():
             pass
         else:
             purchase_qty = (balance * 1000)/co2_price_num
+            buy_co2(purchase_qty)
+    elif co2_holding_num < int(low_co2_level) and co2_price_num < int(low_co2_price_threshold):
+        balance = get_balance()
+        if ((int(low_co2_level) - co2_holding_num) * co2_price_num) / 1000 < balance:
+            buy_co2(int(low_co2_level) - co2_holding_num)
+        else:
+            purchase_qty = (balance * 1000) / co2_price_num
             buy_co2(purchase_qty)
     else:
         LOGGER.info(f'co2 price is too high to buy...')
