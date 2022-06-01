@@ -65,8 +65,8 @@ def get_driver():
 
 def login(u_name, p_word):
     driver = get_driver()
-    driver.get('https://www.airline4.net/')
-    m_login_btn = driver.find_element(By.XPATH, '/html/body/div[3]/div[1]/div[5]/button[1]')
+    driver.get('https://www.airlinemanager.com/')
+    m_login_btn = driver.find_element(By.CSS_SELECTOR, "button.btn.btn-success[data-toggle='modal'][data-target$='loginModal']")
     if m_login_btn is not None and m_login_btn.is_displayed():
         m_login_btn.click()
         email_field = driver.find_element(By.ID, 'lEmail')
@@ -81,14 +81,14 @@ def login(u_name, p_word):
 def logout():
     global w_driver
     if w_driver is not None:
-        w_driver.get('https://www.airline4.net/weblogin/logout.php')
+        w_driver.get('https://www.airlinemanager.com/weblogin/logout.php')
         w_driver.quit()
         w_driver = None
 
 
 def get_fuel_stats():
     driver = get_driver()
-    driver.get('https://www.airline4.net/fuel.php')
+    driver.get('https://www.airlinemanager.com/fuel.php')
     price = driver.find_element(By.XPATH, '/html/body/div/div/div[1]/span[2]/b').text
     capacity = driver.find_element(By.ID, 'remCapacity').text
     holding = driver.find_element(By.ID, 'holding').text
@@ -98,7 +98,7 @@ def get_fuel_stats():
 
 def get_co2_stats():
     driver = get_driver()
-    driver.get('https://www.airline4.net/co2.php')
+    driver.get('https://www.airlinemanager.com/co2.php')
     price = driver.find_element(By.XPATH, '/html/body/div/div/div[2]/span[2]/b').text
     capacity = driver.find_element(By.ID, 'remCapacity').text
     holding = driver.find_element(By.ID, 'holding').text
@@ -108,13 +108,13 @@ def get_co2_stats():
 
 def depart_planes():
     driver = get_driver()
-    driver.get('https://www.airline4.net/route_depart.php?mode=all&ids=x')
+    driver.get('https://www.airlinemanager.com/route_depart.php?mode=all&ids=x')
     LOGGER.info('all planes departed')
 
 
 def get_balance():
     driver = get_driver()
-    driver.get('https://www.airline4.net/')
+    driver.get('https://www.airlinemanager.com/')
     WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, 'headerAccount')))
     balance = driver.find_element(By.ID, 'headerAccount').text
     LOGGER.info(f'Account balance is {balance}')
@@ -123,13 +123,13 @@ def get_balance():
 
 def buy_fuel(quantity):
     driver = get_driver()
-    driver.get(f'https://www.airline4.net/fuel.php?mode=do&amount={quantity}')
+    driver.get(f'https://www.airlinemanager.com/fuel.php?mode=do&amount={quantity}')
     LOGGER.info(f'bought {quantity} fuel')
 
 
 def buy_co2(quantity):
     driver = get_driver()
-    driver.get(f'https://www.airline4.net/co2.php?mode=do&amount={quantity}')
+    driver.get(f'https://www.airlinemanager.com/co2.php?mode=do&amount={quantity}')
     LOGGER.info(f'bought {quantity} co2 quota')
 
 
@@ -185,7 +185,7 @@ def perform_routine_ops():
 
 def set_ticket_price(route_id, e, b, f):
     driver = get_driver()
-    driver.get(f'https://www.airline4.net/set_ticket_prices.php?e={e}&b={b}&f={f}&id={route_id}')
+    driver.get(f'https://www.airlinemanager.com/set_ticket_prices.php?e={e}&b={b}&f={f}&id={route_id}')
 
 
 def get_routes():
@@ -193,7 +193,7 @@ def get_routes():
     driver = get_driver()
     start = 0
     while True:
-        driver.get(f'https://www.airline4.net/routes.php?start={start}')
+        driver.get(f'https://www.airlinemanager.com/routes.php?start={start}')
         routes_container = driver.find_element(By.ID, 'routesContainer')
         elements = routes_container.find_elements(by=By.CLASS_NAME, value='m-text')
         for element in elements:
