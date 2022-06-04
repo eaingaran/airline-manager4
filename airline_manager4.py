@@ -226,6 +226,18 @@ def update_ticket_price():
         set_ticket_price(route['route_id'], route['ticket_price']['ticketY'],
                          route['ticket_price']['ticketJ'], route['ticket_price']['ticketF'])
     logout()
+    return 'ticket prices updated', 200
+
+
+def create_route():
+    pass
+
+
+def buy_aircraft(plane_id, hub_id, engine_id, plane_name, economy, business, first):
+    driver = get_driver()
+    driver.get(f'https://www.airlinemanager.com/ac_order_do.php?id={plane_id}&hub={hub_id}&e={economy}&b={business}&'
+               f'f={first}&r={plane_name}&engine={engine_id}&amount=1&fbSig=false')
+    LOGGER.info(f'bought plane {plane_name}')
 
 
 @app.route('/')
