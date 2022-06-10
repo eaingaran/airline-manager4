@@ -136,6 +136,8 @@ def buy_co2(quantity):
 def perform_routine_ops():
     # depart planes
     depart_planes()
+    # depart planes again, in case there were more than 20 planes to be departed
+    depart_planes()
 
     # fuel checks
     fuel_price, fuel_capacity, fuel_holding = get_fuel_stats()
