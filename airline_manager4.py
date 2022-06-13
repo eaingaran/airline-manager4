@@ -66,7 +66,7 @@ def get_driver():
 def login(u_name, p_word):
     driver = get_driver()
     driver.get('https://www.airlinemanager.com/')
-    m_login_btn = driver.find_element(By.CSS_SELECTOR, "button.btn.btn-success[data-toggle='modal'][data-target$='loginModal']")
+    m_login_btn = driver.find_element(By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")
     if m_login_btn is not None and m_login_btn.is_displayed():
         m_login_btn.click()
         email_field = driver.find_element(By.ID, 'lEmail')
