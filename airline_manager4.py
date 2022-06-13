@@ -250,6 +250,14 @@ def run_app():
     return 'All Done!', 200
 
 
+@app.route('/depart')
+def depart():
+    login(username, password)
+    depart_planes()
+    logout()
+    return 'Planes Departed (Max. 20)!', 200
+
+
 if __name__ == '__main__':
     from waitress import serve
 
