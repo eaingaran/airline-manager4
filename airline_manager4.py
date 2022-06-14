@@ -66,6 +66,8 @@ def get_driver():
 def login(u_name, p_word):
     driver = get_driver()
     driver.get('https://www.airlinemanager.com/')
+    # /html/body/div[4]/div/div[2]/div[1]/div/button[2]
+    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")))
     m_login_btn = driver.find_element(By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")
     if m_login_btn is not None and m_login_btn.is_displayed():
         m_login_btn.click()
@@ -198,15 +200,17 @@ def get_routes():
         driver.get(f'https://www.airlinemanager.com/routes.php?start={start}')
         routes_container = driver.find_element(By.ID, 'routesContainer')
         elements = routes_container.find_elements(by=By.CLASS_NAME, value='m-text')
+        if len(elements) == 0:
+            LOGGER.info('no more routes found...')
+            break
+        else:
+            print(f'found routes {len(elements)}')
+            start += len(elements)
         for element in elements:
             route_id = element.get_property('id').replace('routeMainList', '')
             route_desc = element.find_element(By.XPATH, f'//*[@id="routeMainList{route_id}"]/div[1]/div/div[2]/span').text
             ticket_price = get_route_details(route_desc.split(' - ')[0], route_desc.split(' - ')[1])[1]['realism']
             route_list.append({'route_id': route_id, 'route_desc': route_desc, 'ticket_price': ticket_price})
-        if len(elements) == 20:
-            start += 20
-        else:
-            break
 
     return route_list
 
