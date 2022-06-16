@@ -67,7 +67,7 @@ def login(u_name, p_word):
     driver = get_driver()
     driver.get('https://www.airlinemanager.com/')
     # /html/body/div[4]/div/div[2]/div[1]/div/button[2]
-    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")))
+    WebDriverWait(driver, 30).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")))
     m_login_btn = driver.find_element(By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")
     if m_login_btn is not None and m_login_btn.is_displayed():
         m_login_btn.click()
@@ -77,7 +77,7 @@ def login(u_name, p_word):
         pass_field.send_keys(p_word)
         login_btn = driver.find_element(By.ID, 'btnLogin')
         login_btn.click()
-        WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, 'flightInfoToggleIcon')))
+        WebDriverWait(driver, 60).until(EC.element_to_be_clickable((By.ID, 'flightInfoToggleIcon')))
 
 
 def logout():
