@@ -1,15 +1,19 @@
 import json
 import os
 import requests
+from datetime import datetime
 
 from flask import Flask
 
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+from google.cloud import storage
 
 import logging
 from logging.config import fileConfig
@@ -67,7 +71,17 @@ def login(u_name, p_word):
     driver = get_driver()
     driver.get('https://www.airlinemanager.com/')
     # /html/body/div[4]/div/div[2]/div[1]/div/button[2]
-    WebDriverWait(driver, 100).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")))
+    try:
+        WebDriverWait(driver, 100).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")))
+    except TimeoutException as e:
+        LOGGER.error('login button not found. waiting timed out', e)
+        driver.save_screenshot('login_error.png')
+        # Instantiates a client
+        client = storage.Client()
+        bucket = client.get_bucket('bucket-id')
+        new_blob = bucket.blob(f'login_error_{datetime.now()}.png')
+        new_blob.upload_from_filename(filename='login_error.png')
+
     m_login_btn = driver.find_element(By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")
     if m_login_btn is not None and m_login_btn.is_displayed():
         m_login_btn.click()
