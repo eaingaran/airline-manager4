@@ -54,6 +54,13 @@ LOGGER.info(f'if the co2 quota is less than {low_co2_level} lbs, difference will
 w_driver = None
 
 
+def save_screenshot_to_bucket(bucket_name, file_name):
+    client = storage.Client()
+    bucket = client.get_bucket(bucket_name)
+    new_blob = bucket.blob(file_name.replace('.png', f'{datetime.now()}.png'))
+    new_blob.upload_from_filename(filename=file_name)
+
+
 def get_driver():
     global w_driver
     if w_driver is None:
@@ -75,12 +82,8 @@ def login(u_name, p_word):
         WebDriverWait(driver, 100).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")))
     except TimeoutException as e:
         LOGGER.error('login button not found. waiting timed out', e)
-        driver.save_screenshot('login_error.png')
-        # Instantiates a client
-        client = storage.Client()
-        bucket = client.get_bucket('bucket-id')
-        new_blob = bucket.blob(f'login_error_{datetime.now()}.png')
-        new_blob.upload_from_filename(filename='login_error.png')
+        driver.save_screenshot('login_page_error.png')
+        save_screenshot_to_bucket('cloud-run-am4', 'login_page_error.png')
 
     m_login_btn = driver.find_element(By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")
     if m_login_btn is not None and m_login_btn.is_displayed():
@@ -91,7 +94,12 @@ def login(u_name, p_word):
         pass_field.send_keys(p_word)
         login_btn = driver.find_element(By.ID, 'btnLogin')
         login_btn.click()
-        WebDriverWait(driver, 60).until(EC.element_to_be_clickable((By.ID, 'flightInfoToggleIcon')))
+        try:
+            WebDriverWait(driver, 120).until(EC.element_to_be_clickable((By.ID, 'flightInfoToggleIcon')))
+        except TimeoutException as e:
+            LOGGER.error('login button not found. waiting timed out', e)
+            driver.save_screenshot('login_error.png')
+            save_screenshot_to_bucket('cloud-run-am4', 'login_error.png')
 
 
 def logout():
