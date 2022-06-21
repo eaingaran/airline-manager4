@@ -1,6 +1,9 @@
+import time
+
 import airline_manager4 as am4
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from enum import Enum
 
 
 def print_routes():
@@ -63,30 +66,40 @@ def print_routes():
     am4.logout()
 
 
+class Hubs(Enum):
+    London_Heathrow_Int = 3582640
+    Frankfurt_Int = 3353515
+    Los_Angeles = 3458942
+    New_Delhi = 3502287
+    Abu_Dhabi_Int = 3523007
+    St_Petersburg = 3538538
+    Long_Beach = 3541183
+    Chennai = 3541222
+    Conakry = 3648482
+
+
+class Planes(Enum):
+    MC_21_400 = 344
+    A330_900neo = 308
+
+
+class Engines(Enum):
+    PW1400G = 312           # used in MC-21-400
+    RR_Trent_7000 = 294     # used in A330-900neo
+
+
 def buy_planes():
-    hubs = {
-        'London Heathrow intl': 3582640,
-        'Frankfurt intl': 3353515,
-        'Los Angeles': 3458942,
-        'New Delhi': 3502287,
-        'Abu Dhabi Int': 3523007,
-        'St. Petersburg': 3538538,
-        'Long Beach': 3541183,
-        'Chennai': 3541222,
-        'Conakry': 3648482
-    }
-    planes = {
-        'MC-21-400': 344,
-        'A330-900neo': 308,
-    }
     am4.login(am4.username, am4.password)
+
+    # https://www.airlinemanager.com/ac_order_do.php?id=308&hub=3523007&e=185&b=110&f=145&r=AUH-CLT&engine=294&amount=1&fbSig=false
 
     with open('new_planes.txt', 'r') as planes:
         for plane in planes:
             all_val = plane.split(' - ')
             plane_val = all_val[2].split(',')
-            am4.buy_aircraft(344, 3648482, 312, f'{all_val[0]}', int(plane_val[0]), int(plane_val[1]),
-                             int(plane_val[2]))
+            am4.buy_aircraft(Planes.A330_900neo.value, Hubs.New_Delhi.value, Engines.RR_Trent_7000.value,
+                             f'{all_val[0]}',
+                             int(plane_val[0]), int(plane_val[1]), int(plane_val[2]))
 
     am4.logout()
 
@@ -110,6 +123,8 @@ if __name__ == '__main__':
     w_driver.maximize_window()
 
     am4.w_driver = w_driver
+
+    am4.run_app()
 
     # update_ticket_price()
     # buy_planes()
