@@ -81,7 +81,7 @@ def login(u_name, p_word):
     try:
         WebDriverWait(driver, 100).until(EC.element_to_be_clickable((By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")))
     except TimeoutException as e:
-        LOGGER.error('login button not found. waiting timed out', e)
+        LOGGER.error(f'login button not found. waiting timed out. {e}')
         driver.save_screenshot('login_page_error.png')
         save_screenshot_to_bucket('cloud-run-am4', 'login_page_error.png')
 
@@ -97,7 +97,7 @@ def login(u_name, p_word):
         try:
             WebDriverWait(driver, 120).until(EC.element_to_be_clickable((By.ID, 'flightInfoToggleIcon')))
         except TimeoutException as e:
-            LOGGER.error('login button not found. waiting timed out', e)
+            LOGGER.error(f'login button not found. waiting timed out. {e}')
             driver.save_screenshot('login_error.png')
             save_screenshot_to_bucket('cloud-run-am4', 'login_error.png')
 
