@@ -59,10 +59,17 @@ w_driver = None
 
 
 def save_screenshot_to_bucket(bucket_name, file_name):
+    LOGGER.debug(f'current directory is {os.getcwd()}')
+    files = [f for f in os.listdir('.')]
+    LOGGER.debug(f'Following files are in the current directory')
+    for f in files:
+        LOGGER.debug(f)
     client = storage.Client()
     bucket = client.get_bucket(bucket_name)
     new_blob = bucket.blob(file_name.replace('.png', f'{datetime.now()}.png'))
-    new_blob.upload_from_filename(filename=file_name)
+    file_upload = os.path.join(os.getcwd(), file_name)
+    LOGGER.info(f'uploading {file_upload} to the bucket')
+    new_blob.upload_from_filename(filename=file_upload)
 
 
 def get_driver():
@@ -210,7 +217,6 @@ def perform_routine_ops():
         balance = get_balance()
         if (co2_capacity_num * co2_price_num)/1000 < balance:
             buy_co2(co2_capacity_num)
-            pass
         else:
             purchase_qty = (balance * 1000)/co2_price_num
             buy_co2(purchase_qty)
