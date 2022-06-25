@@ -112,7 +112,7 @@ def login(u_name, p_word):
                 EC.element_to_be_clickable((By.ID, 'flightInfoToggleIcon')))
         except TimeoutException as e:
             LOGGER.error(f'login button not found. waiting timed out. {e}')
-            driver.save_screenshot('login_error.png')
+            driver.save_screenshot('/app/login_error.png')
             save_screenshot_to_bucket('cloud-run-am4', 'login_error.png')
 
 
