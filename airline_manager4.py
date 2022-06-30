@@ -19,7 +19,6 @@ from google.cloud import storage
 import logging
 from logging.config import fileConfig
 
-from test import buy_planes
 
 fileConfig('logger.cfg')
 LOGGER = logging.getLogger()
