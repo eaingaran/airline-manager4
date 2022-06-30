@@ -265,7 +265,7 @@ def get_routes():
             LOGGER.info('no more routes found...')
             break
         else:
-            print(f'found routes {len(elements)}')
+            LOGGER.debug(f'found routes {len(elements)}')
             start += len(elements)
         for element in elements:
             route_id = element.get_property('id').replace('routeMainList', '')
@@ -345,7 +345,7 @@ def get_plane_details(aircraft_type_id):
         plane_seats = element.find_element(
             By.XPATH, f'.//div[3]').text
         
-        LOGGER.debug(plane_id, plane_name, plane_status)
+        LOGGER.debug(f"{plane_name} with id {plane_id} has the status {plane_status}")
 
         economy = plane_seats.split('\n')[0].split(': ')[1]
         business = plane_seats.split('\n')[1].split(': ')[1]
