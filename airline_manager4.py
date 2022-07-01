@@ -69,7 +69,8 @@ def save_screenshot_to_bucket(bucket_name, file_name):
     try:
         client = storage.Client()
         bucket = client.get_bucket(bucket_name)
-        new_blob = bucket.blob(file_name.replace('.png', f'{datetime.now()}.png'))
+        new_blob = bucket.blob(file_name.replace(
+            '.png', f'{datetime.now()}.png'))
         file_upload = os.path.join(os.getcwd(), file_name)
         LOGGER.info(f'uploading {file_upload} to the bucket')
         new_blob.upload_from_filename(filename=file_upload)
@@ -120,13 +121,13 @@ def login(u_name, p_word):
             LOGGER.exception(f'login button not found. waiting timed out.')
             driver.save_screenshot('/app/login_error.png')
             save_screenshot_to_bucket('cloud-run-am4', 'login_error.png')
-            driver.get('https://www.airlinemanager.com/banking_account.php?id=0')
+            driver.get(
+                'https://www.airlinemanager.com/banking_account.php?id=0')
             if driver.find_element(By.XPATH, '/html/body/div[4]').text == 'Transaction history':
                 LOGGER.info('login successful')
             else:
                 LOGGER.error('login failed')
                 raise Exception('login failed. Automation will exit.')
-                
 
 
 def logout():
@@ -240,6 +241,8 @@ def perform_co2_ops():
 
 
 def perform_routine_ops():
+    # check and perform marketing
+    marketing()
     # depart planes
     depart_planes()
     # perform fuel ops
@@ -319,7 +322,8 @@ def check_aircrafts():
     aircrafts = aircraft_list.find_elements(By.CLASS_NAME, 'maint-list-sort')
     for aircraft in aircrafts:
         try:
-            aircraft_id = aircraft.find_element(By.XPATH, './/div[3]') .get_property('id').replace('controls', '')
+            aircraft_id = aircraft.find_element(
+                By.XPATH, './/div[3]') .get_property('id').replace('controls', '')
             aircraft_location = aircraft.text.split('\n')[4]
             if aircraft_location == 'Not at base':
                 continue
@@ -327,7 +331,8 @@ def check_aircrafts():
             if int(time_to_check) < 20:
                 aircrafts_to_check.append(aircraft_id)
         except NoSuchElementException:
-            LOGGER.exception('something went wrong when checking aircraft for maintenance')
+            LOGGER.exception(
+                'something went wrong when checking aircraft for maintenance')
     for aircraft_id in aircrafts_to_check:
         check_aircraft(aircraft_id)
 
@@ -352,8 +357,9 @@ def get_plane_details(aircraft_type_id):
             By.XPATH, f'.//div[4]/span').text
         plane_seats = element.find_element(
             By.XPATH, f'.//div[3]').text
-        
-        LOGGER.debug(f"{plane_name} with id {plane_id} has the status {plane_status}")
+
+        LOGGER.debug(
+            f"{plane_name} with id {plane_id} has the status {plane_status}")
 
         economy = plane_seats.split('\n')[0].split(': ')[1]
         business = plane_seats.split('\n')[1].split(': ')[1]
@@ -361,13 +367,13 @@ def get_plane_details(aircraft_type_id):
 
         planes_data.append({'id': plane_id, 'name': plane_name, 'departure': plane_name.split(
             '-')[0], 'arrival': plane_name.split('-')[1], 'status': plane_status, 'economy': economy, 'business': business, 'first': first})
-        
+
     return planes_data
 
 
 def get_seat_configuration(departure, arrival, max_seat_capacity, trips):
     route_details, _ = get_route_details(departure, arrival)
-        
+
     f = math.ceil(route_details['first_class_demand']/trips) + 1
     b = math.ceil(route_details['business_demand']/trips) + 1
     e = math.ceil(route_details['economic_demand']/trips) + 1
@@ -384,7 +390,7 @@ def get_seat_configuration(departure, arrival, max_seat_capacity, trips):
         _e = max_seat_capacity - (b + f)
         _b = b
         _f = f
-    
+
     return _e, _b, _f
 
 
@@ -392,7 +398,8 @@ def create_routes(aircraft_type_id):
     for plane_data in get_plane_details(aircraft_type_id):
         # possible vales are ['Maintenance', 'Routed', 'Pending', 'Grounded', 'Parked']
         if plane_data['status'] in ['Parked']:
-            route_details, ticket_prices = get_route_details(plane_data['departure'], plane_data['arrival'])
+            route_details, ticket_prices = get_route_details(
+                plane_data['departure'], plane_data['arrival'])
             create_route(plane_data['id'],
                          plane_data['name'], route_details['arrival']['id'], ticket_prices['realism']['ticketY'],
                          ticket_prices['realism']['ticketJ'], ticket_prices['realism']['ticketF'])
@@ -420,12 +427,14 @@ def find_routes(plane, hub_iata_code, limit=1):
 
     plane_details = get_plane_details(plane['id'])
 
-    destinations = [plane['arrival'] for plane in plane_details if plane['departure'] == hub_iata_code]
+    destinations = [plane['arrival']
+                    for plane in plane_details if plane['departure'] == hub_iata_code]
     routes = {}
 
     for page_number in range(1, 500):
         try:
-            response = requests.get(f'https://am4tools.com/route/search?departure={hub_iata_code}&sort=firstClass&order=desc&page={page_number}&mode=hub')
+            response = requests.get(
+                f'https://am4tools.com/route/search?departure={hub_iata_code}&sort=firstClass&order=desc&page={page_number}&mode=hub')
             if response.status_code == 404:
                 break
             if response.status_code == 200:
@@ -442,24 +451,28 @@ def find_routes(plane, hub_iata_code, limit=1):
                             # this route is too short for this plane (each trip will be less than 12 hours)
                             # this also includes 10% higher speed after the engine modification
                             continue
-                        airport = [airport for airport in airports if airport['iata'] == route['arrival']['iata']][0]
+                        airport = [
+                            airport for airport in airports if airport['iata'] == route['arrival']['iata']][0]
                         if airport['runway'] < plane['runway']:
                             # runway in the destination is too short for this plane
                             continue
-                        # both a330-900neo and a380-800 can make 2 trips a day. 
+                        # both a330-900neo and a380-800 can make 2 trips a day.
                         if route['first_class_demand'] + route['business_demand'] + route['economic_demand'] < 2 * plane['capacity']:
                             # if the combined demand is more than 2*capacity, the trip is worth it.
                             continue
                         if route['first_class_demand'] < plane['capacity'] * 0.25 * 2 or (route['first_class_demand'] + route['business_demand']) < plane['capacity'] * 0.7 * 2:
                             # if the first class demand is less than 25% of the capacity or the combined demand of first and business class is less than 70% of the capacity, the trip is not very profitable.
                             continue
-                        e, b, f = get_seat_configuration(route['departure']['iata'], route['arrival']['iata'], plane['capacity'], 2)
-                        
-                        routes[f"{route['departure']['iata']}-{route['arrival']['iata']}"] = {'name': f"{route['departure']['iata']}-{route['arrival']['iata']}", 'economy': e, 'business': b, 'first': f}
+                        e, b, f = get_seat_configuration(
+                            route['departure']['iata'], route['arrival']['iata'], plane['capacity'], 2)
+
+                        routes[f"{route['departure']['iata']}-{route['arrival']['iata']}"] = {
+                            'name': f"{route['departure']['iata']}-{route['arrival']['iata']}", 'economy': e, 'business': b, 'first': f}
                         if len(routes) == limit:
                             return routes
                     except Exception as e:
-                        LOGGER.exception('Error processing a route from am4tools')
+                        LOGGER.exception(
+                            'Error processing a route from am4tools')
         except Exception as e:
             LOGGER.exception('Error getting routes from am4tools')
 
@@ -483,7 +496,8 @@ def buy_aircrafts():
             if len(routes) <= quantity:
                 quantity -= len(routes)
             for name, route in routes.items():
-                buy_aircraft(plane['id'], hub['hub_id'], plane['engine']['id'], name, route['economy'], route['business'], route['first'])
+                buy_aircraft(plane['id'], hub['hub_id'], plane['engine']['id'],
+                             name, route['economy'], route['business'], route['first'])
             if quantity == 0:
                 break
 
@@ -496,11 +510,49 @@ def route_aircrafts():
     for plane_data in get_plane_details(plane['id']):
         # possible vales are ['Maintenance', 'Routed', 'Pending', 'Grounded', 'Parked']
         if plane_data['status'] in ['Parked']:
-            modify_aircraft(plane_data['id'], plane_data['economy'], plane_data['business'], plane_data['first'])
-            route_details, ticket_prices = get_route_details(plane_data['departure'], plane_data['arrival'])
+            modify_aircraft(plane_data['id'], plane_data['economy'],
+                            plane_data['business'], plane_data['first'])
+            route_details, ticket_prices = get_route_details(
+                plane_data['departure'], plane_data['arrival'])
             create_route(plane_data['id'],
                          plane_data['name'], route_details['arrival']['id'], ticket_prices['realism']['ticketY'],
                          ticket_prices['realism']['ticketJ'], ticket_prices['realism']['ticketF'])
+
+
+def start_marketing_campaign(type, campaign, duration):
+    campaign_map = {'type': {1: 'Airline', 2: 'Cargo', 5: 'Eco Friendly'},
+                    'campaign': {1: '5-10%', 2: '10-18%', 3: '19-25%', 4: '25-35%'},
+                    'duration': {1: '4', 2: '8', 3: '12', 4: '16', 5: '20', 6: '24'}}
+    driver = get_driver()
+    driver.get(
+        f'https://www.airlinemanager.com/marketing_new.php?type={type}&c={campaign}&mode=do&d={duration}')
+    LOGGER.info(
+        f'{campaign_map["type"][type]} campaign started for {campaign_map["campaign"][campaign]} with duration {campaign_map["duration"][duration]} hours')
+
+
+def marketing():
+    driver = get_driver()
+    driver.get('https://www.airlinemanager.com/marketing.php')
+    campaign_table = driver.find_element(By.ID, 'active-campaigns')
+    campaigns = campaign_table.find_elements(
+        by=By.TAG_NAME, value='td')
+    if len(campaigns) == 0:
+        # start all campaigns
+        start_marketing_campaign(1, 4, 3)
+        start_marketing_campaign(5, 4, 3)
+    else:
+        active_campaign = [campaign.text.strip() for campaign in campaigns if campaign.text.strip() != '']
+        print(active_campaign)
+        if 'Airline reputation' not in active_campaign:
+            # start airlines campaign
+            start_marketing_campaign(1, 4, 3)
+        if 'Eco friendly' not in active_campaign:
+            # start aircraft campaign
+            start_marketing_campaign(5, 4, 3)
+        if 'Cargo reputation' not in active_campaign:
+            # currently, i am not running any cargo planes.
+            # hence, this campaign is waste of money.
+            pass
 
 
 @app.route('/')
@@ -548,11 +600,13 @@ def update_fleet(aircraft_type_id, max_seat_capacity, trips):
             continue
         if int(plane_data['economy']) + int(plane_data['business']) + int(plane_data['first']) == max_seat_capacity and int(plane_data['economy']) != max_seat_capacity and plane_data['name'] != 'DEL-ICN':
             continue
-        
-        e, b, f = get_seat_configuration(plane_data['departure'], plane_data['arrival'], max_seat_capacity, trips)
+
+        e, b, f = get_seat_configuration(
+            plane_data['departure'], plane_data['arrival'], max_seat_capacity, trips)
 
         if plane_data['status'] in ['Parked']:
-            route_details, ticket_prices = get_route_details(plane_data['departure'], plane_data['arrival'])
+            route_details, ticket_prices = get_route_details(
+                plane_data['departure'], plane_data['arrival'])
             create_route(plane_data['id'],
                          plane_data['name'], route_details['arrival']['id'], ticket_prices['realism']['ticketY'],
                          ticket_prices['realism']['ticketJ'], ticket_prices['realism']['ticketF'])
@@ -563,6 +617,7 @@ def update_fleet(aircraft_type_id, max_seat_capacity, trips):
         modify_aircraft(plane_data['id'], e, b, f)
 
     logout()
+
 
 if __name__ == '__main__':
     from waitress import serve
