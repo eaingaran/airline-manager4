@@ -93,10 +93,10 @@ def login(u_name, p_word):
     driver.get('https://www.airlinemanager.com/')
     # /html/body/div[4]/div/div[2]/div[1]/div/button[2]
     try:
-        WebDriverWait(driver, 100).until(EC.element_to_be_clickable(
+        WebDriverWait(driver, 120).until(EC.element_to_be_clickable(
             (By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")))
     except TimeoutException as e:
-        LOGGER.error(f'login button not found. waiting timed out. {e}')
+        LOGGER.exception(f'login button not found. waiting timed out.')
         driver.save_screenshot('login_page_error.png')
         save_screenshot_to_bucket('cloud-run-am4', 'login_page_error.png')
 
@@ -114,7 +114,7 @@ def login(u_name, p_word):
             WebDriverWait(driver, 120).until(
                 EC.element_to_be_clickable((By.ID, 'flightInfoToggleIcon')))
         except TimeoutException as e:
-            LOGGER.error(f'login button not found. waiting timed out. {e}')
+            LOGGER.exception(f'login button not found. waiting timed out.')
             driver.save_screenshot('/app/login_error.png')
             save_screenshot_to_bucket('cloud-run-am4', 'login_error.png')
 
@@ -413,7 +413,7 @@ def find_routes(plane, hub_iata_code, limit=1):
     plane_details = get_plane_details(plane['id'])
 
     destinations = [plane['arrival'] for plane in plane_details if plane['departure'] == hub_iata_code]
-    routes = set()
+    routes = {}
 
     for page_number in range(1, 500):
         try:
@@ -447,7 +447,7 @@ def find_routes(plane, hub_iata_code, limit=1):
                             continue
                         e, b, f = get_seat_configuration(route['departure']['iata'], route['arrival']['iata'], plane['capacity'], 2)
                         
-                        routes.add({'name': f"{route['departure']['iata']}-route['arrival']['iata']", 'economy': e, 'business': b, 'first': f})
+                        routes[f"{route['departure']['iata']}-{route['arrival']['iata']}"] = {'name': f"{route['departure']['iata']}-{route['arrival']['iata']}", 'economy': e, 'business': b, 'first': f}
                         if len(routes) == limit:
                             return routes
                     except Exception as e:
@@ -474,8 +474,8 @@ def buy_aircrafts():
                 continue
             if len(routes) < quantity:
                 quantity -= len(routes)
-            for route in routes:
-                buy_aircraft(plane['id'], hubs['hub_id'], plane['engine']['id'], route['name'], route['economy'], route['business'], route['first'])
+            for _, (name, route) in routes:
+                buy_aircraft(plane['id'], hubs['hub_id'], plane['engine']['id'], name, route['economy'], route['business'], route['first'])
             if quantity == 0:
                 break
 
