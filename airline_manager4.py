@@ -542,7 +542,6 @@ def marketing():
         start_marketing_campaign(5, 4, 3)
     else:
         active_campaign = [campaign.text.strip() for campaign in campaigns if campaign.text.strip() != '']
-        print(active_campaign)
         if 'Airline reputation' not in active_campaign:
             # start airlines campaign
             start_marketing_campaign(1, 4, 3)
