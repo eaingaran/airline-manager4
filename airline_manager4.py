@@ -65,14 +65,16 @@ def save_screenshot_to_bucket(bucket_name, file_name):
     LOGGER.debug(f'current directory is {os.getcwd()}')
     files = [f for f in os.listdir('.')]
     LOGGER.debug(f'Following files are in the current directory')
-    for f in files:
-        LOGGER.debug(f)
-    client = storage.Client()
-    bucket = client.get_bucket(bucket_name)
-    new_blob = bucket.blob(file_name.replace('.png', f'{datetime.now()}.png'))
-    file_upload = os.path.join(os.getcwd(), file_name)
-    LOGGER.info(f'uploading {file_upload} to the bucket')
-    new_blob.upload_from_filename(filename=file_upload)
+    LOGGER.debug(', '.join(files))
+    try:
+        client = storage.Client()
+        bucket = client.get_bucket(bucket_name)
+        new_blob = bucket.blob(file_name.replace('.png', f'{datetime.now()}.png'))
+        file_upload = os.path.join(os.getcwd(), file_name)
+        LOGGER.info(f'uploading {file_upload} to the bucket')
+        new_blob.upload_from_filename(filename=file_upload)
+    except Exception as e:
+        LOGGER.exception(f'error uploading {file_upload} to the bucket')
 
 
 def get_driver():
@@ -99,6 +101,7 @@ def login(u_name, p_word):
         LOGGER.exception(f'login button not found. waiting timed out.')
         driver.save_screenshot('login_page_error.png')
         save_screenshot_to_bucket('cloud-run-am4', 'login_page_error.png')
+        driver.get('https://www.airlinemanager.com/')
 
     m_login_btn = driver.find_element(
         By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")
@@ -117,6 +120,13 @@ def login(u_name, p_word):
             LOGGER.exception(f'login button not found. waiting timed out.')
             driver.save_screenshot('/app/login_error.png')
             save_screenshot_to_bucket('cloud-run-am4', 'login_error.png')
+            driver.get('https://www.airlinemanager.com/banking_account.php?id=0')
+            if driver.find_element(By.XPATH, '/html/body/div[4]').text == 'Transaction history':
+                LOGGER.info('login successful')
+            else:
+                LOGGER.error('login failed')
+                raise Exception('login failed. Automation will exit.')
+                
 
 
 def logout():
@@ -159,12 +169,10 @@ def depart_planes():
 
 def get_balance():
     driver = get_driver()
-    driver.get('https://www.airlinemanager.com/')
-    WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.ID, 'headerAccount')))
-    balance = driver.find_element(By.ID, 'headerAccount').text
+    driver.get('https://www.airlinemanager.com/banking_account.php?id=0')
+    balance = driver.find_element(By.XPATH, '/html/body/div[1]/div').text
     LOGGER.info(f'Account balance is {balance}')
-    return int(balance.replace(',', ''))
+    return int(balance.replace('$', '').replace(',', '').strip())
 
 
 def buy_fuel(quantity):
@@ -472,10 +480,10 @@ def buy_aircrafts():
             routes = find_routes(plane, hub['iata'], quantity)
             if len(routes) == 0:
                 continue
-            if len(routes) < quantity:
+            if len(routes) <= quantity:
                 quantity -= len(routes)
-            for _, (name, route) in routes:
-                buy_aircraft(plane['id'], hubs['hub_id'], plane['engine']['id'], name, route['economy'], route['business'], route['first'])
+            for name, route in routes.items():
+                buy_aircraft(plane['id'], hub['hub_id'], plane['engine']['id'], name, route['economy'], route['business'], route['first'])
             if quantity == 0:
                 break
 
