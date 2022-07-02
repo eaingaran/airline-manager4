@@ -71,11 +71,10 @@ def save_screenshot_to_bucket(bucket_name, file_name):
         bucket = client.get_bucket(bucket_name)
         new_blob = bucket.blob(file_name.replace(
             '.png', f'{datetime.now()}.png'))
-        file_upload = os.path.join(os.getcwd(), file_name)
-        LOGGER.info(f'uploading {file_upload} to the bucket')
-        new_blob.upload_from_filename(filename=file_upload)
+        LOGGER.info(f'uploading {file_name} to the bucket')
+        new_blob.upload_from_filename(filename=file_name)
     except Exception as e:
-        LOGGER.exception(f'error uploading {file_upload} to the bucket')
+        LOGGER.exception(f'error uploading {file_name} to the bucket')
 
 
 def get_driver():
@@ -98,14 +97,14 @@ def login(u_name, p_word):
     try:
         WebDriverWait(driver, 120).until(EC.element_to_be_clickable(
             (By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")))
+        m_login_btn = driver.find_element(
+        By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")
     except TimeoutException as e:
         LOGGER.exception(f'login button not found. waiting timed out.')
-        driver.save_screenshot('login_page_error.png')
-        save_screenshot_to_bucket('cloud-run-am4', 'login_page_error.png')
+        driver.save_screenshot(os.path.join(os.getcwd(), 'login_page_error.png'))
+        save_screenshot_to_bucket('cloud-run-am4', os.path.join(os.getcwd(), 'login_page_error.png'))
         driver.get('https://www.airlinemanager.com/')
 
-    m_login_btn = driver.find_element(
-        By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")
     if m_login_btn is not None and m_login_btn.is_displayed():
         m_login_btn.click()
         email_field = driver.find_element(By.ID, 'lEmail')
@@ -119,8 +118,8 @@ def login(u_name, p_word):
                 EC.element_to_be_clickable((By.ID, 'flightInfoToggleIcon')))
         except TimeoutException as e:
             LOGGER.exception(f'login button not found. waiting timed out.')
-            driver.save_screenshot('/app/login_error.png')
-            save_screenshot_to_bucket('cloud-run-am4', 'login_error.png')
+            driver.save_screenshot(os.path.join(os.getcwd(), 'login_error.png'))
+            save_screenshot_to_bucket('cloud-run-am4', os.path.join(os.getcwd(), 'login_error.png'))
             driver.get(
                 'https://www.airlinemanager.com/banking_account.php?id=0')
             if driver.find_element(By.XPATH, '/html/body/div[4]').text == 'Transaction history':
@@ -128,6 +127,9 @@ def login(u_name, p_word):
             else:
                 LOGGER.error('login failed')
                 raise Exception('login failed. Automation will exit.')
+    else:
+        LOGGER.error('login failed')
+        raise Exception('login failed. Automation will exit.')
 
 
 def logout():
@@ -437,7 +439,7 @@ def find_routes(plane, hub_iata_code, limit=1):
                 f'https://am4tools.com/route/search?departure={hub_iata_code}&sort=firstClass&order=desc&page={page_number}&mode=hub')
             if response.status_code == 404:
                 break
-            if response.status_code == 200:
+            if response.status_code == 200 and 'routes' in response.json():
                 potential_routes = response.json()['routes']
                 for route in potential_routes:
                     try:
@@ -491,7 +493,7 @@ def buy_aircrafts():
         LOGGER.info(f'Buying {quantity} {plane["model"]}')
         for hub in hubs:
             routes = find_routes(plane, hub['iata'], quantity)
-            if len(routes) == 0:
+            if routes is None or len(routes) == 0:
                 continue
             if len(routes) <= quantity:
                 quantity -= len(routes)
