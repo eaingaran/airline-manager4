@@ -417,9 +417,6 @@ def get_plane_details(aircraft_type_id):
         plane_seats = element.find_element(
             By.XPATH, f'.//div[3]').text
 
-        LOGGER.debug(
-            f"{plane_name} with id {plane_id} has the status {plane_status}")
-
         economy = plane_seats.split('\n')[0].split(': ')[1]
         business = plane_seats.split('\n')[1].split(': ')[1]
         first = plane_seats.split('\n')[2].split(': ')[1]
