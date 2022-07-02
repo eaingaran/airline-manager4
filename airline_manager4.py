@@ -269,8 +269,8 @@ def get_current_time_window():
 def log_fuel_stats():
     fuel_price, _, _ = get_fuel_stats()
     co2_price, _, _ = get_co2_stats()
-    LOGGER.debug(f'Fuel Price: ${fuel_price}')
-    LOGGER.debug(f'CO2 Price: ${co2_price}')
+    LOGGER.debug(f'Fuel Price: {fuel_price}')
+    LOGGER.debug(f'CO2 Price: {co2_price}')
     client = storage.Client()
     bucket = client.get_bucket(bucket_name)
     new_blob = bucket.blob(fuel_log_file)
@@ -289,8 +289,8 @@ def log_fuel_stats():
         pass
     else:
         fuel_stats[date_string][time_string] = {
-            'fuel_price': fuel_price,
-            'co2_price': co2_price
+            'fuel_price': int(fuel_price.replace('$', '').replace(',', '').replace(' ', '')),
+            'co2_price': int(co2_price.replace('$', '').replace(',', '').replace(' ', ''))
         }
         LOGGER.info(f'uploading {fuel_log_file} to the bucket')
         new_blob.upload_from_string(
