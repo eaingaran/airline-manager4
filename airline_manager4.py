@@ -294,7 +294,7 @@ def log_fuel_stats():
         }
         LOGGER.info(f'uploading {fuel_log_file} to the bucket')
         new_blob.upload_from_string(
-            data=fuel_stats, content_type='application/json')
+            data=json.dumps(fuel_stats), content_type='application/json')
 
 
 def perform_routine_ops():
