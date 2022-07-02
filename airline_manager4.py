@@ -254,9 +254,9 @@ def perform_co2_ops():
 def get_current_time_window():
     now = datetime.now(timezone.utc)
     if now.minute < 30:
-        return now.replace(minute=0, second=0, microsecond=0)
+        return now.strftime('%Y-%m-%d'), now.replace(minute=0, second=0, microsecond=0).strftime("%H:%M:%S %Z")
     else:
-        return now.replace(minute=30, second=0, microsecond=0)
+        return now.strftime('%Y-%m-%d'), now.replace(minute=30, second=0, microsecond=0).strftime("%H:%M:%S %Z")
 
 
 def log_fuel_stats():
@@ -273,14 +273,13 @@ def log_fuel_stats():
         LOGGER.exception('Fuel stats file not found in the bucket', e)
         fuel_stats = {}
 
-    date_string = datetime.datetime.now().strftime('%Y-%m-%d')
-    time_stamp = get_current_time_window().strftime("%H:%M:%S %Z")
+    date_string, time_string = get_current_time_window()
 
-    if date_string in fuel_stats and time_stamp in fuel_stats[date_string]:
+    if date_string in fuel_stats and time_string in fuel_stats[date_string]:
         # prices already updated, so no action needed
         pass
     else:
-        fuel_stats[date_string][time_stamp] = {
+        fuel_stats[date_string][time_string] = {
             'fuel_price': fuel_price,
             'co2_price': co2_price
         }
