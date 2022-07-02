@@ -1,7 +1,7 @@
 import json
 import os
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 import math
 
 from flask import Flask
@@ -15,6 +15,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 from google.cloud import storage
+from google.cloud.exceptions import NotFound
 
 import logging
 from logging.config import fileConfig
@@ -48,6 +49,8 @@ co2_price_threshold = os.environ.get('MAX_BUY_CO2_PRICE', 111)
 low_co2_level = os.environ.get('LOW_CO2_LEVEL', 20000000)
 low_co2_price_threshold = os.environ.get('MAX_BUY_LOW_CO2_PRICE', 140)
 plane_to_buy = os.environ.get('PLANE_SHORT_NAME_TO_BUY', 'a339')
+bucket_name = os.environ.get('BUCKET_NAME', 'cloud-run-am4')
+fuel_log_file = os.environ.get('FUEL_LOG_FILE', 'fuel_log.json')
 
 LOGGER.info(
     f'fuel tank will be filled if the price is less than ${fuel_price_threshold}')
@@ -61,7 +64,7 @@ LOGGER.info(f'if the co2 quota is less than {low_co2_level} lbs, difference will
 w_driver = None
 
 
-def save_screenshot_to_bucket(bucket_name, file_name):
+def save_screenshot_to_bucket(file_name):
     LOGGER.debug(f'current directory is {os.getcwd()}')
     files = [f for f in os.listdir('.')]
     LOGGER.debug(f'Following files are in the current directory')
@@ -74,7 +77,7 @@ def save_screenshot_to_bucket(bucket_name, file_name):
         LOGGER.info(f'uploading {file_name} to the bucket')
         new_blob.upload_from_filename(filename=file_name)
     except Exception as e:
-        LOGGER.exception(f'error uploading {file_name} to the bucket')
+        LOGGER.exception(f'error uploading {file_name} to the bucket', e)
 
 
 def get_driver():
@@ -84,6 +87,8 @@ def get_driver():
         options.headless = True
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
+        options.add_argument(
+            'user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36')
         w_driver = webdriver.Chrome(options=options)
         w_driver.maximize_window()
         return w_driver
@@ -98,11 +103,13 @@ def login(u_name, p_word):
         WebDriverWait(driver, 120).until(EC.element_to_be_clickable(
             (By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")))
         m_login_btn = driver.find_element(
-        By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")
+            By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")
     except TimeoutException as e:
-        LOGGER.exception(f'login button not found. waiting timed out.')
-        driver.save_screenshot(os.path.join(os.getcwd(), 'login_page_error.png'))
-        save_screenshot_to_bucket('cloud-run-am4', os.path.join(os.getcwd(), 'login_page_error.png'))
+        LOGGER.exception(f'login button not found. waiting timed out.', e)
+        driver.save_screenshot(os.path.join(
+            os.getcwd(), 'login_page_error.png'))
+        save_screenshot_to_bucket(os.path.join(
+            os.getcwd(), 'login_page_error.png'))
         driver.get('https://www.airlinemanager.com/')
 
     if m_login_btn is not None and m_login_btn.is_displayed():
@@ -117,9 +124,11 @@ def login(u_name, p_word):
             WebDriverWait(driver, 120).until(
                 EC.element_to_be_clickable((By.ID, 'flightInfoToggleIcon')))
         except TimeoutException as e:
-            LOGGER.exception(f'login button not found. waiting timed out.')
-            driver.save_screenshot(os.path.join(os.getcwd(), 'login_error.png'))
-            save_screenshot_to_bucket('cloud-run-am4', os.path.join(os.getcwd(), 'login_error.png'))
+            LOGGER.exception(f'login button not found. waiting timed out.', e)
+            driver.save_screenshot(os.path.join(
+                os.getcwd(), 'login_error.png'))
+            save_screenshot_to_bucket(
+                os.path.join(os.getcwd(), 'login_error.png'))
             driver.get(
                 'https://www.airlinemanager.com/banking_account.php?id=0')
             if driver.find_element(By.XPATH, '/html/body/div[4]').text == 'Transaction history':
@@ -242,7 +251,47 @@ def perform_co2_ops():
         LOGGER.info(f'co2 price is too high to buy...')
 
 
+def get_current_time_window():
+    now = datetime.now(timezone.utc)
+    if now.minute < 30:
+        return now.replace(minute=0, second=0, microsecond=0)
+    else:
+        return now.replace(minute=30, second=0, microsecond=0)
+
+
+def log_fuel_stats():
+    fuel_price, _, _ = get_fuel_stats()
+    co2_price, _, _ = get_co2_stats()
+    LOGGER.debug(f'Fuel Price: ${fuel_price}')
+    LOGGER.debug(f'CO2 Price: ${co2_price}')
+    client = storage.Client()
+    bucket = client.get_bucket(bucket_name)
+    new_blob = bucket.blob(fuel_log_file)
+    try:
+        fuel_stats = json.loads(new_blob.download_as_text())
+    except NotFound as e:
+        LOGGER.exception('Fuel stats file not found in the bucket', e)
+        fuel_stats = {}
+
+    date_string = datetime.datetime.now().strftime('%Y-%m-%d')
+    time_stamp = get_current_time_window().strftime("%H:%M:%S %Z")
+
+    if date_string in fuel_stats and time_stamp in fuel_stats[date_string]:
+        # prices already updated, so no action needed
+        pass
+    else:
+        fuel_stats[date_string][time_stamp] = {
+            'fuel_price': fuel_price,
+            'co2_price': co2_price
+        }
+        LOGGER.info(f'uploading {fuel_log_file} to the bucket')
+        new_blob.upload_from_string(
+            data=fuel_stats, content_type='application/json')
+
+
 def perform_routine_ops():
+    # store fuel and CO2 prices
+    log_fuel_stats()
     # check and perform marketing
     marketing()
     # depart planes
@@ -332,9 +381,9 @@ def check_aircrafts():
             time_to_check = aircraft.text.split('\n')[6]
             if int(time_to_check) < 20:
                 aircrafts_to_check.append(aircraft_id)
-        except NoSuchElementException:
+        except NoSuchElementException as e:
             LOGGER.exception(
-                'something went wrong when checking aircraft for maintenance')
+                'something went wrong when checking aircraft for maintenance', e)
     for aircraft_id in aircrafts_to_check:
         check_aircraft(aircraft_id)
 
@@ -474,9 +523,9 @@ def find_routes(plane, hub_iata_code, limit=1):
                             return routes
                     except Exception as e:
                         LOGGER.exception(
-                            'Error processing a route from am4tools')
+                            'Error processing a route from am4tools', e)
         except Exception as e:
-            LOGGER.exception('Error getting routes from am4tools')
+            LOGGER.exception('Error getting routes from am4tools', e)
 
 
 def buy_aircrafts():
@@ -543,7 +592,8 @@ def marketing():
         start_marketing_campaign(1, 4, 3)
         start_marketing_campaign(5, 4, 3)
     else:
-        active_campaign = [campaign.text.strip() for campaign in campaigns if campaign.text.strip() != '']
+        active_campaign = [campaign.text.strip()
+                           for campaign in campaigns if campaign.text.strip() != '']
         if 'Airline reputation' not in active_campaign:
             # start airlines campaign
             start_marketing_campaign(1, 4, 3)
