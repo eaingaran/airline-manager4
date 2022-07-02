@@ -275,7 +275,9 @@ def log_fuel_stats():
 
     date_string, time_string = get_current_time_window()
 
-    if date_string in fuel_stats and time_string in fuel_stats[date_string]:
+    if date_string not in fuel_stats:
+        fuel_stats[date_string] = {}
+    if time_string in fuel_stats[date_string]:
         # prices already updated, so no action needed
         pass
     else:
