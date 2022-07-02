@@ -99,6 +99,7 @@ def login(u_name, p_word):
     driver = get_driver()
     driver.get('https://www.airlinemanager.com/')
     # /html/body/div[4]/div/div[2]/div[1]/div/button[2]
+    m_login_btn = None
     try:
         WebDriverWait(driver, 120).until(EC.element_to_be_clickable(
             (By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")))
