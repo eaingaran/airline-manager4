@@ -1,5 +1,5 @@
-# FROM selenium/standalone-chrome:latest
-FROM selenium/standalone-firefox:latest
+FROM selenium/standalone-chrome:latest
+# FROM selenium/standalone-firefox:latest
 
 USER root
 

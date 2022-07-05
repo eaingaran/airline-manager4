@@ -568,6 +568,8 @@ def buy_aircrafts():
                              name, route['economy'], route['business'], route['first'])
             if quantity == 0:
                 break
+        if quantity != 0:
+            LOGGER.info(f'Could not buy {quantity} {plane["model"]} as there are no possible routes left.')
 
 
 def route_aircrafts():
