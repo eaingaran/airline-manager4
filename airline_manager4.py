@@ -117,6 +117,7 @@ def login(u_name, p_word):
         logout()
     except Exception as e:
         LOGGER.debug('user not logged in')
+    driver = get_driver()
     driver.get('https://www.airlinemanager.com/')
     # /html/body/div[4]/div/div[2]/div[1]/div/button[2]
     m_login_btn = None
