@@ -3,3 +3,6 @@ waitress~=2.1.1
 Flask~=2.1.2
 requests~=2.27.1
 google-cloud-storage
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-gcp-trace

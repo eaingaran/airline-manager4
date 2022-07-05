@@ -18,6 +18,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from google.cloud import storage
 from google.cloud.exceptions import NotFound
 
+from opentelemetry import trace
+from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.trace import Link
+
 import logging
 from logging.config import fileConfig
 
@@ -37,9 +43,20 @@ else:
     LOGGER.warning(f'LOG_LEVEL not set. current log level is {LOGGER.level}')
 
 
+tracer_provider = TracerProvider()
+cloud_trace_exporter = CloudTraceSpanExporter()
+tracer_provider.add_span_processor(
+    # BatchSpanProcessor buffers spans and sends them in batches in a
+    # background thread. The default parameters are sensible, but can be
+    # tweaked to optimize your performance
+    BatchSpanProcessor(cloud_trace_exporter)
+)
+trace.set_tracer_provider(tracer_provider)
+
 app_name = 'Airline Manager Automation'
 
 app = Flask(app_name)
+tracer = trace.get_tracer(app_name)
 
 username = os.environ.get('USERNAME')
 password = os.environ.get('PASSWORD')
@@ -319,22 +336,30 @@ def log_fuel_stats():
 
 
 def perform_routine_ops():
-    # store fuel and CO2 prices
-    log_fuel_stats()
-    # check and perform marketing
-    marketing()
-    # depart planes
-    depart_planes()
-    # perform fuel ops
-    perform_fuel_ops()
-    # perform co2 ops
-    perform_co2_ops()
-    # perform maintenance, if needed
-    check_aircrafts()
-    # buy planes if there is enough money
-    buy_aircrafts()
-    # route parked planes, if any
-    route_aircrafts()
+    with tracer.start_span("log_fuel_status") as current_span:
+        # store fuel and CO2 prices
+        log_fuel_stats()
+    with tracer.start_span("perform_marketing") as current_span:
+        # check and perform marketing
+        marketing()
+    with tracer.start_span("depart_planes") as current_span:
+        # depart planes
+        depart_planes()
+    with tracer.start_span("buy_fuel") as current_span:
+        # perform fuel ops
+        perform_fuel_ops()
+    with tracer.start_span("buy_co2_quota") as current_span:
+        # perform co2 ops
+        perform_co2_ops()
+    with tracer.start_span("schedule_A-checks") as current_span:
+        # perform maintenance, if needed
+        check_aircrafts()
+    with tracer.start_span("buy_aircrafts") as current_span:
+        # buy planes if there is enough money
+        buy_aircrafts()
+    with tracer.start_span("route_aircrafts") as current_span:
+        # route parked planes, if any
+        route_aircrafts()
 
 
 def set_ticket_price(route_id, e, b, f):
@@ -637,7 +662,8 @@ def marketing():
 @app.route('/')
 def run_app():
     login(username, password)
-    perform_routine_ops()
+    with tracer.start_span("routine_operation") as current_span:
+        perform_routine_ops()
     logout()
     return 'All Done!', 200
 
