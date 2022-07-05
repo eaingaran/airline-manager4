@@ -1,6 +1,8 @@
 # FROM selenium/standalone-chrome:latest
 FROM selenium/standalone-firefox:latest
 
+USER root
+
 WORKDIR /app
 
 RUN sudo apt-get update
