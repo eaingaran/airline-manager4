@@ -8,7 +8,8 @@ from flask import Flask
 
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -51,6 +52,7 @@ low_co2_price_threshold = os.environ.get('MAX_BUY_LOW_CO2_PRICE', 140)
 plane_to_buy = os.environ.get('PLANE_SHORT_NAME_TO_BUY', 'a339')
 bucket_name = os.environ.get('BUCKET_NAME', 'cloud-run-am4')
 fuel_log_file = os.environ.get('FUEL_LOG_FILE', 'fuel_log.json')
+driver_name = os.environ.get('DRIVER_NAME', 'chrome')
 
 LOGGER.info(
     f'fuel tank will be filled if the price is less than ${fuel_price_threshold}')
@@ -83,13 +85,23 @@ def save_screenshot_to_bucket(file_name):
 def get_driver():
     global w_driver
     if w_driver is None:
-        options = Options()
-        options.headless = True
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument(
-            'user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36')
-        w_driver = webdriver.Chrome(options=options)
+        if driver_name == 'chrome':
+            options = ChromeOptions()
+            options.headless = True
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument(
+                'user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36')
+            w_driver = webdriver.Chrome(options=options)
+        elif driver_name == 'firefox':
+            options = FirefoxOptions()
+            options.headless = True
+            profile = webdriver.FirefoxProfile()
+            profile.set_preference("general.useragent.override", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36")
+            w_driver = webdriver.Firefox(options=options, firefox_profile=profile)
+        else:
+            LOGGER.error(f'unknown driver {driver_name}')
+            raise Exception(f'unknown driver {driver_name}')
         w_driver.maximize_window()
         return w_driver
     return w_driver
