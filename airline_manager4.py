@@ -18,12 +18,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from google.cloud import storage
 from google.cloud.exceptions import NotFound
 
-from opentelemetry import trace
-from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.trace import Link
-
 import logging
 from logging.config import fileConfig
 
@@ -43,20 +37,9 @@ else:
     LOGGER.warning(f'LOG_LEVEL not set. current log level is {LOGGER.level}')
 
 
-tracer_provider = TracerProvider()
-cloud_trace_exporter = CloudTraceSpanExporter()
-tracer_provider.add_span_processor(
-    # BatchSpanProcessor buffers spans and sends them in batches in a
-    # background thread. The default parameters are sensible, but can be
-    # tweaked to optimize your performance
-    BatchSpanProcessor(cloud_trace_exporter)
-)
-trace.set_tracer_provider(tracer_provider)
-
 app_name = 'Airline Manager Automation'
 
 app = Flask(app_name)
-tracer = trace.get_tracer(app_name)
 
 username = os.environ.get('USERNAME')
 password = os.environ.get('PASSWORD')
@@ -129,7 +112,7 @@ def login(u_name, p_word):
     # check if the user is already logged in
     try:
         driver.get('https://www.airlinemanager.com/banking_account.php?id=0')
-        driver.find_element(By.XPATH, '/html/body/div[1]/div').text
+        driver.find_element(By.ID, 'bankDetailAction').text
         LOGGER.debug('already logged in, logging out')
         logout()
     except Exception as e:
@@ -336,30 +319,22 @@ def log_fuel_stats():
 
 
 def perform_routine_ops():
-    with tracer.start_span("log_fuel_status") as current_span:
-        # store fuel and CO2 prices
-        log_fuel_stats()
-    with tracer.start_span("perform_marketing") as current_span:
-        # check and perform marketing
-        marketing()
-    with tracer.start_span("depart_planes") as current_span:
-        # depart planes
-        depart_planes()
-    with tracer.start_span("buy_fuel") as current_span:
-        # perform fuel ops
-        perform_fuel_ops()
-    with tracer.start_span("buy_co2_quota") as current_span:
-        # perform co2 ops
-        perform_co2_ops()
-    with tracer.start_span("schedule_A-checks") as current_span:
-        # perform maintenance, if needed
-        check_aircrafts()
-    with tracer.start_span("buy_aircrafts") as current_span:
-        # buy planes if there is enough money
-        buy_aircrafts()
-    with tracer.start_span("route_aircrafts") as current_span:
-        # route parked planes, if any
-        route_aircrafts()
+    # store fuel and CO2 prices
+    log_fuel_stats()
+    # check and perform marketing
+    marketing()
+    # depart planes
+    depart_planes()
+    # perform fuel ops
+    perform_fuel_ops()
+    # perform co2 ops
+    perform_co2_ops()
+    # perform maintenance, if needed
+    check_aircrafts()
+    # buy planes if there is enough money
+    buy_aircrafts()
+    # route parked planes, if any
+    route_aircrafts()
 
 
 def set_ticket_price(route_id, e, b, f):
@@ -534,6 +509,7 @@ def find_routes(plane, hub_iata_code, limit=1):
     routes = {}
 
     for page_number in range(1, 500):
+        LOGGER.info(f'checking page {page_number}')
         try:
             response = requests.get(
                 f'https://am4tools.com/route/search?departure={hub_iata_code}&sort=firstClass&order=desc&page={page_number}&mode=hub')
@@ -542,6 +518,7 @@ def find_routes(plane, hub_iata_code, limit=1):
             if response.status_code == 200 and 'routes' in response.json():
                 potential_routes = response.json()['routes']
                 for route in potential_routes:
+                    LOGGER.info(f"checking route {route['departure']['iata']}-{route['arrival']['iata']}")
                     try:
                         if route['arrival']['iata'] in destinations:
                             # this route already exists
@@ -580,6 +557,8 @@ def find_routes(plane, hub_iata_code, limit=1):
 
 
 def buy_aircrafts():
+    # find a way to store the aircrafts to buy list in a file and use it rather than computing on the fly. 
+    return
     planes = []
     hubs = []
     with open('planes.json', 'r') as planes_json:
@@ -662,8 +641,7 @@ def marketing():
 @app.route('/')
 def run_app():
     login(username, password)
-    with tracer.start_span("routine_operation") as current_span:
-        perform_routine_ops()
+    perform_routine_ops()
     logout()
     return 'All Done!', 200
 
