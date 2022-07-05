@@ -113,8 +113,8 @@ def login(u_name, p_word):
     try:
         driver.get('https://www.airlinemanager.com/banking_account.php?id=0')
         driver.find_element(By.XPATH, '/html/body/div[1]/div').text
-        LOGGER.debug('already logged in')
-        return
+        LOGGER.debug('already logged in, logging out')
+        logout()
     except Exception as e:
         LOGGER.debug('user not logged in')
     driver.get('https://www.airlinemanager.com/')
