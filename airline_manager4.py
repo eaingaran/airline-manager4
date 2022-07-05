@@ -109,11 +109,19 @@ def get_driver():
 
 def login(u_name, p_word):
     driver = get_driver()
+    # check if the user is already logged in
+    try:
+        driver.get('https://www.airlinemanager.com/banking_account.php?id=0')
+        driver.find_element(By.XPATH, '/html/body/div[1]/div').text
+        LOGGER.debug('already logged in')
+        return
+    except Exception as e:
+        LOGGER.debug('user not logged in')
     driver.get('https://www.airlinemanager.com/')
     # /html/body/div[4]/div/div[2]/div[1]/div/button[2]
     m_login_btn = None
     try:
-        WebDriverWait(driver, 120).until(EC.element_to_be_clickable(
+        WebDriverWait(driver, 60).until(EC.element_to_be_clickable(
             (By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")))
         m_login_btn = driver.find_element(
             By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")
@@ -140,7 +148,7 @@ def login(u_name, p_word):
         login_btn = driver.find_element(By.ID, 'btnLogin')
         login_btn.click()
         try:
-            WebDriverWait(driver, 120).until(
+            WebDriverWait(driver, 60).until(
                 EC.element_to_be_clickable((By.ID, 'flightInfoToggleIcon')))
         except TimeoutException as e:
             LOGGER.exception(f'login button not found. waiting timed out.', e)
