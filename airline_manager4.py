@@ -52,7 +52,6 @@ low_co2_price_threshold = os.environ.get('MAX_BUY_LOW_CO2_PRICE', 140)
 plane_to_buy = os.environ.get('PLANE_SHORT_NAME_TO_BUY', 'a339')
 bucket_name = os.environ.get('BUCKET_NAME', 'cloud-run-am4')
 fuel_log_file = os.environ.get('FUEL_LOG_FILE', 'fuel_log.json')
-driver_name = os.environ.get('DRIVER_NAME', 'chrome')
 
 LOGGER.info(
     f'fuel tank will be filled if the price is less than ${fuel_price_threshold}')
@@ -85,23 +84,13 @@ def save_screenshot_to_bucket(file_name):
 def get_driver():
     global w_driver
     if w_driver is None:
-        if driver_name == 'chrome':
-            options = ChromeOptions()
-            options.headless = True
-            options.add_argument('--no-sandbox')
-            options.add_argument('--disable-dev-shm-usage')
-            options.add_argument(
-                'user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36')
-            w_driver = webdriver.Chrome(options=options)
-        elif driver_name == 'firefox':
-            options = FirefoxOptions()
-            options.headless = True
-            profile = webdriver.FirefoxProfile()
-            profile.set_preference("general.useragent.override", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36")
-            w_driver = webdriver.Firefox(options=options, firefox_profile=profile)
-        else:
-            LOGGER.error(f'unknown driver {driver_name}')
-            raise Exception(f'unknown driver {driver_name}')
+        options = ChromeOptions()
+        options.headless = True
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument(
+            'user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36')
+        w_driver = webdriver.Chrome(options=options)
         w_driver.maximize_window()
         return w_driver
     return w_driver
@@ -509,16 +498,14 @@ def find_routes(plane, hub_iata_code, limit=1):
     routes = {}
 
     for page_number in range(1, 500):
-        LOGGER.info(f'checking page {page_number}')
         try:
             response = requests.get(
                 f'https://am4tools.com/route/search?departure={hub_iata_code}&sort=firstClass&order=desc&page={page_number}&mode=hub')
             if response.status_code == 404:
-                break
+                return routes
             if response.status_code == 200 and 'routes' in response.json():
                 potential_routes = response.json()['routes']
                 for route in potential_routes:
-                    LOGGER.info(f"checking route {route['departure']['iata']}-{route['arrival']['iata']}")
                     try:
                         if route['arrival']['iata'] in destinations:
                             # this route already exists
@@ -526,27 +513,28 @@ def find_routes(plane, hub_iata_code, limit=1):
                         if route['distance'] > plane['range']:
                             # this route is too long for this plane
                             continue
-                        if route['distance'] < plane['engine']['speed'] * 12 * 1.1:
-                            # this route is too short for this plane (each trip will be less than 12 hours)
-                            # this also includes 10% higher speed after the engine modification
-                            continue
+                        trips = math.ceil(
+                            24/(route['distance']/(plane['engine']['speed'] * 1.1)))
                         airport = [
                             airport for airport in airports if airport['iata'] == route['arrival']['iata']][0]
                         if airport['runway'] < plane['runway']:
                             # runway in the destination is too short for this plane
                             continue
-                        # both a330-900neo and a380-800 can make 2 trips a day.
-                        if route['first_class_demand'] + route['business_demand'] + route['economic_demand'] < 2 * plane['capacity']:
+                        if route['first_class_demand'] + route['business_demand'] + route['economic_demand'] < trips * plane['capacity']:
                             # if the combined demand is more than 2*capacity, the trip is worth it.
                             continue
-                        if route['first_class_demand'] < plane['capacity'] * 0.25 * 2 or (route['first_class_demand'] + route['business_demand']) < plane['capacity'] * 0.7 * 2:
-                            # if the first class demand is less than 25% of the capacity or the combined demand of first and business class is less than 70% of the capacity, the trip is not very profitable.
+                        if route['first_class_demand'] < plane['capacity'] * 0.20 * trips:
+                            # if the first class demand is less than 25% of the capacity, the trip is not very profitable.
+                            # since the routes are ordered by first class demand, it makes sense to continue checking for this hub anymore.
+                            return routes
+                        if route['first_class_demand'] + route['business_demand'] < plane['capacity'] * 0.6 * trips:
+                            # the combined demand of first and business class is less than 70% of the capacity, the trip is not very profitable.
                             continue
                         e, b, f = get_seat_configuration(
-                            route['departure']['iata'], route['arrival']['iata'], plane['capacity'], 2)
+                            route['departure']['iata'], route['arrival']['iata'], plane['capacity'], trips)
 
                         routes[f"{route['departure']['iata']}-{route['arrival']['iata']}"] = {
-                            'name': f"{route['departure']['iata']}-{route['arrival']['iata']}", 'economy': e, 'business': b, 'first': f}
+                            'name': f"{route['departure']['iata']}-{route['arrival']['iata']}", 'economy': e, 'business': b, 'first': f, 'distance': route['distance'], 'trips': trips}
                         if len(routes) == limit:
                             return routes
                     except Exception as e:
@@ -554,11 +542,10 @@ def find_routes(plane, hub_iata_code, limit=1):
                             'Error processing a route from am4tools', e)
         except Exception as e:
             LOGGER.exception('Error getting routes from am4tools', e)
+    return routes
 
 
 def buy_aircrafts():
-    # find a way to store the aircrafts to buy list in a file and use it rather than computing on the fly. 
-    return
     planes = []
     hubs = []
     with open('planes.json', 'r') as planes_json:
@@ -567,8 +554,8 @@ def buy_aircrafts():
         hubs = json.load(hubs_json)
     plane = [plane for plane in planes if plane['shortname'] == plane_to_buy][0]
     balance = get_balance()
-    if balance > plane['price'] * 1.3:
-        quantity = math.floor(balance / (plane['price'] * 1.2))
+    if balance > plane['price'] * 1.2:
+        quantity = math.floor(balance / (plane['price'] * 1.1))
         LOGGER.info(f'Buying {quantity} {plane["model"]}')
         for hub in hubs:
             routes = find_routes(plane, hub['iata'], quantity)
@@ -582,7 +569,8 @@ def buy_aircrafts():
             if quantity == 0:
                 break
         if quantity != 0:
-            LOGGER.info(f'Could not buy {quantity} {plane["model"]} as there are no possible routes left.')
+            LOGGER.info(
+                f'Could not buy {quantity} {plane["model"]} as there are no possible routes left.')
 
 
 def route_aircrafts():
