@@ -545,7 +545,20 @@ def find_routes(plane, hub_iata_code, limit=1):
     return routes
 
 
+def get_hanger_capacity():
+    try:
+        driver = get_driver()
+        driver.get('https://www.airlinemanager.com/hangars.php')
+        return int(driver.find_element(By.XPATH, '/html/body/div[3]/div[2]/table/tbody/tr[2]/td[3]/span').text)
+    except Exception as e:
+        LOGGER.exception('Error getting hanger capacity', e)
+        return 0
+
+
 def buy_aircrafts():
+    hanger_capacity = get_hanger_capacity()
+    if hanger_capacity == 0:
+        return
     planes = []
     hubs = []
     with open('planes.json', 'r') as planes_json:
@@ -556,6 +569,8 @@ def buy_aircrafts():
     balance = get_balance()
     if balance > plane['price'] * 1.2:
         quantity = math.floor(balance / (plane['price'] * 1.1))
+        if quantity > hanger_capacity:
+            quantity = hanger_capacity
         LOGGER.info(f'Buying {quantity} {plane["model"]}')
         for hub in hubs:
             routes = find_routes(plane, hub['iata'], quantity)
