@@ -558,6 +558,7 @@ def get_hanger_capacity():
 def buy_aircrafts():
     hanger_capacity = get_hanger_capacity()
     if hanger_capacity == 0:
+        LOGGER.warning('No hanger capacity available. Cannot buy new planes.')
         return
     planes = []
     hubs = []
