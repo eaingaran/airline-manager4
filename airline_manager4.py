@@ -51,7 +51,6 @@ low_co2_level = os.environ.get('LOW_CO2_LEVEL', 20000000)
 low_co2_price_threshold = os.environ.get('MAX_BUY_LOW_CO2_PRICE', 140)
 plane_to_buy = os.environ.get('PLANE_SHORT_NAME_TO_BUY', 'a339')
 bucket_name = os.environ.get('BUCKET_NAME', 'cloud-run-am4')
-fuel_log_file = os.environ.get('FUEL_LOG_FILE', 'fuel_log.json')
 
 LOGGER.info(
     f'fuel tank will be filled if the price is less than ${fuel_price_threshold}')
@@ -277,6 +276,9 @@ def get_current_time_window():
 
 
 def log_fuel_stats():
+    current_month = datetime.now(timezone.utc).strftime("%b")
+    current_year = datetime.now(timezone.utc).strftime("%Y")
+    fuel_log_file = f'{current_year}_{current_month}_fuel_stats.json'
     fuel_price, _, _ = get_fuel_stats()
     co2_price, _, _ = get_co2_stats()
     LOGGER.debug(f'Fuel Price: {fuel_price}')
