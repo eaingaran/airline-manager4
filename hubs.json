@@ -1,5 +1,57 @@
 [
   {
+    "id": 3890,
+    "hub_id": 3906719,
+    "iata": "PEK",
+    "icao": "ZBAA",
+    "runway": 12468,
+    "market": 71,
+    "longitude": 116.584999115,
+    "latitude": 40.080101001,
+    "city": "Beijing Capital",
+    "country": "China",
+    "country_code": "cn"
+  },
+  {
+    "id": 1136,
+    "hub_id": 3906711,
+    "iata": "ATL",
+    "icao": "KATL",
+    "runway": 11890,
+    "market": 61,
+    "longitude": -84.42810102,
+    "latitude": 33.636700028,
+    "city": "Atlanta Int",
+    "country": "United States",
+    "country_code": "us"
+  },
+  {
+    "id": 1561,
+    "hub_id": 3906755,
+    "iata": "ORD",
+    "icao": "KORD",
+    "runway": 13000,
+    "market": 53,
+    "longitude": -87.904799982,
+    "latitude": 41.978599978,
+    "city": "Chicago O'Hare",
+    "country": "United States",
+    "country_code": "us"
+  },
+  {
+    "id": 2763,
+    "hub_id": 3906740,
+    "iata": "HND",
+    "icao": "RJTT",
+    "runway": 11024,
+    "market": 37,
+    "longitude": 139.779999001,
+    "latitude": 35.552298988,
+    "city": "Tokyo Haneda",
+    "country": "Japan",
+    "country_code": "jp"
+  },
+  {
     "id": 3512,
     "hub_id": 3502287,
     "iata": "DEL",
@@ -115,5 +167,18 @@
     "city": "Long Beach",
     "country": "United States",
     "country_code": "us"
+  },
+  {
+    "id": 2365,
+    "hub_id": 3891770,
+    "iata": "CHC",
+    "icao": "NZCH",
+    "runway": 10787,
+    "market": 81,
+    "longitude": 172.531997705,
+    "latitude": -43.489398985,
+    "city": "Christchurch",
+    "country": "New Zealand",
+    "country_code": "nz"
   }
 ]

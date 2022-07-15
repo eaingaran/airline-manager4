@@ -49,7 +49,8 @@ low_fuel_price_threshold = os.environ.get('MAX_BUY_LOW_FUEL_PRICE', 800)
 co2_price_threshold = os.environ.get('MAX_BUY_CO2_PRICE', 111)
 low_co2_level = os.environ.get('LOW_CO2_LEVEL', 20000000)
 low_co2_price_threshold = os.environ.get('MAX_BUY_LOW_CO2_PRICE', 140)
-plane_to_buy = os.environ.get('PLANE_SHORT_NAME_TO_BUY', 'a339')
+pax_plane_to_buy = os.environ.get('PAX_PLANE_SHORT_NAME_TO_BUY', 'a339')
+cargo_plane_to_buy = os.environ.get('CARGO_PLANE_SHORT_NAME_TO_BUY', 'a388f')
 bucket_name = os.environ.get('BUCKET_NAME', 'cloud-run-am4')
 
 LOGGER.info(
@@ -323,9 +324,14 @@ def perform_routine_ops():
     # perform maintenance, if needed
     check_aircrafts()
     # buy planes if there is enough money
-    buy_aircrafts()
+    # buy pax planes
+    buy_pax_aircrafts()
     # route parked planes, if any
-    route_aircrafts()
+    route_pax_aircrafts()
+    # buy cargo planes
+    buy_cargo_aircrafts()
+    # route parked planes, if any
+    route_cargo_aircrafts()
 
 
 def set_ticket_price(route_id, e, b, f):
@@ -354,16 +360,16 @@ def get_routes():
             route_desc = element.find_element(
                 By.XPATH, f'//*[@id="routeMainList{route_id}"]/div[1]/div/div[2]/span').text
             ticket_price = get_route_details(route_desc.split(
-                ' - ')[0], route_desc.split(' - ')[1])[1]['realism']
+                ' - ')[0], route_desc.split(' - ')[1], 'pax')[1]['realism']
             route_list.append(
                 {'route_id': route_id, 'route_desc': route_desc, 'ticket_price': ticket_price})
 
     return route_list
 
 
-def get_route_details(departure, arrival):
+def get_route_details(departure, arrival, type='pax'):
     response = requests.get(
-        f'https://am4tools.com/route/ticket?type=pax&mode=normal&departure={departure}&arrival={arrival}')
+        f'https://am4tools.com/route/ticket?type={type}&mode=normal&departure={departure}&arrival={arrival}')
     if response.status_code == 200:
         route_details = json.loads(response.text)
     else:
@@ -374,15 +380,29 @@ def get_route_details(departure, arrival):
 def create_route(plane_id, route_name, destination_airport_id, economy_price, business_price, first_price):
     driver = get_driver()
     driver.get(
-        f'https://www.airlinemanager.com/new_route_info.php?mode=do&id={plane_id}&airportId={destination_airport_id}&reg={route_name}&e={economy_price}&b={business_price}&f={first_price}&stopoverId=0&ferry=0&intro=0&fbSig=false')
-    LOGGER.info(f'created route {route_name}')
+        f'https://www.airlinemanager.com/new_route_info.php?mode=do&id={plane_id}&airportId={destination_airport_id}&reg={route_name}&e={economy_price}&b={business_price}&f={first_price}&stopoverId=0&ferry=0&intro=0')
+    LOGGER.info(f'created pax route {route_name}')
 
 
-def buy_aircraft(plane_id, hub_id, engine_id, plane_name, economy, business, first):
+def create_cargo_route(plane_id, route_name, destination_airport_id, large_ticket, heavy_ticket):
+    driver = get_driver()
+    # curl 'https://www.airlinemanager.com/new_route_info.php?mode=do&id=31068418&airportId=3568&reg=FRA-MLE&e=7.66&b=4.34&f=1&stopoverId=0&ferry=0&intro=0'
+    driver.get(
+        f'https://www.airlinemanager.com/new_route_info.php?mode=do&id={plane_id}&airportId={destination_airport_id}&reg={route_name}&e={large_ticket}&b={heavy_ticket}&f=1&stopoverId=0&ferry=0&intro=0')
+    LOGGER.info(f'created cargo route {route_name}')
+
+
+def buy_pax_aircraft(plane_id, hub_id, engine_id, plane_name, economy, business, first):
     driver = get_driver()
     driver.get(f'https://www.airlinemanager.com/ac_order_do.php?id={plane_id}&hub={hub_id}&e={economy}&b={business}&'
-               f'f={first}&r={plane_name}&engine={engine_id}&amount=1&fbSig=false')
-    LOGGER.info(f'bought plane {plane_name}')
+               f'f={first}&r={plane_name}&engine={engine_id}&amount=1')
+    LOGGER.info(f'bought pax plane {plane_name}')
+
+
+def buy_cargo_aircraft(plane_id, hub_id, engine_id, plane_name, aft, forward):
+    driver = get_driver()
+    driver.get(f'https://www.airlinemanager.com/ac_order_do_cargo.php?engine={engine_id}&reg={plane_name}&hub={hub_id}&acId={plane_id}&aft={aft}&fwd={forward}')
+    LOGGER.info(f'bought cargo plane {plane_name}')
 
 
 def check_aircrafts():
@@ -408,7 +428,37 @@ def check_aircrafts():
         check_aircraft(aircraft_id)
 
 
-def get_plane_details(aircraft_type_id):
+def get_cargo_plane_details(aircraft_type_id):
+    planes_data = []
+
+    driver = get_driver()
+
+    driver.get(
+        f'https://www.airlinemanager.com/fleet.php?type={aircraft_type_id}')
+
+    elements = driver.find_elements(By.XPATH, '/html/body/div[2]/div/div')
+
+    for element in elements:
+
+        plane_id = element.find_element(
+            By.XPATH, f'.//div[1]/span').get_attribute("onclick").split(',')[1]
+        plane_name = element.find_element(
+            By.XPATH, f'.//div[2]/a').text
+        plane_status = element.find_element(
+            By.XPATH, f'.//div[4]/span').text
+        plane_seats = element.find_element(
+            By.XPATH, f'.//div[3]').text
+
+        large = plane_seats.split('\n')[0].split(': ')[1]
+        heavy = plane_seats.split('\n')[1].split(': ')[1]
+
+        planes_data.append({'id': plane_id, 'name': plane_name, 'departure': plane_name.split(
+            '-')[0], 'arrival': plane_name.split('-')[1], 'status': plane_status, 'large': large, 'heavy': heavy})
+
+    return planes_data
+
+
+def get_pax_plane_details(aircraft_type_id):
     planes_data = []
 
     driver = get_driver()
@@ -440,7 +490,7 @@ def get_plane_details(aircraft_type_id):
 
 
 def get_seat_configuration(departure, arrival, max_seat_capacity, trips):
-    route_details, _ = get_route_details(departure, arrival)
+    route_details, _ = get_route_details(departure, arrival, 'pax')
 
     f = math.ceil(route_details['first_class_demand']/trips) + 1
     b = math.ceil(route_details['business_demand']/trips) + 1
@@ -462,22 +512,30 @@ def get_seat_configuration(departure, arrival, max_seat_capacity, trips):
     return _e, _b, _f
 
 
-def create_routes(aircraft_type_id):
-    for plane_data in get_plane_details(aircraft_type_id):
+def create_pax_routes(aircraft_type_id):
+    for plane_data in get_pax_plane_details(aircraft_type_id):
         # possible vales are ['Maintenance', 'Routed', 'Pending', 'Grounded', 'Parked']
         if plane_data['status'] in ['Parked']:
             route_details, ticket_prices = get_route_details(
-                plane_data['departure'], plane_data['arrival'])
+                plane_data['departure'], plane_data['arrival'], 'pax')
             create_route(plane_data['id'],
                          plane_data['name'], route_details['arrival']['id'], ticket_prices['realism']['ticketY'],
                          ticket_prices['realism']['ticketJ'], ticket_prices['realism']['ticketF'])
 
 
-def modify_aircraft(aircraft_id, economy, business, first):
+def modify_pax_aircraft(aircraft_id, economy, business, first):
     driver = get_driver()
     driver.get(
-        f'https://www.airlinemanager.com/maint_plan_do.php?mode=do&modType=pax&id={aircraft_id}&type=modify&eSeat={economy}&bSeat={business}&fSeat={first}&mod1=1&mod2=1&mod3=1&fbSig=false')
-    LOGGER.info(f'Modification scheduled for aircraft {aircraft_id}')
+        f'https://www.airlinemanager.com/maint_plan_do.php?mode=do&modType=pax&id={aircraft_id}&type=modify&eSeat={economy}&bSeat={business}&fSeat={first}&mod1=1&mod2=1&mod3=1')
+    LOGGER.info(f'Modification scheduled for pax aircraft {aircraft_id}')
+
+
+def modify_cargo_aircraft(aircraft_id, large, heavy):
+    driver = get_driver()
+    # 'https://www.airlinemanager.com/maint_plan_do.php?mode=do&modType=cargo&id=31068059&type=modify&large=0&heavy=303700&mod1=1&mod2=1&mod3=1'
+    driver.get(
+        f'https://www.airlinemanager.com/maint_plan_do.php?mode=do&modType=cargo&id={aircraft_id}&type=modify&large={large}&heavy={heavy}&mod1=1&mod2=1&mod3=1')
+    LOGGER.info(f'Modification scheduled for cargo aircraft {aircraft_id}')
 
 
 def check_aircraft(aircraft_id):
@@ -487,16 +545,18 @@ def check_aircraft(aircraft_id):
     LOGGER.info(f'A-Check scheduled for {aircraft_id}')
 
 
-def find_routes(plane, hub_iata_code, limit=1):
+def find_pax_routes(plane, hub_iata_code, limit=1):
     airports = []
 
     with open('airports.json', 'r') as airports_file:
         airports = json.load(airports_file)
 
-    plane_details = get_plane_details(plane['id'])
+    plane_details = get_pax_plane_details(plane['id'])
 
     destinations = [plane['arrival']
                     for plane in plane_details if plane['departure'] == hub_iata_code]
+    destinations.extend([plane['departure']
+                    for plane in plane_details if plane['arrival'] == hub_iata_code])
     routes = {}
 
     for page_number in range(1, 500):
@@ -529,7 +589,7 @@ def find_routes(plane, hub_iata_code, limit=1):
                             # if the first class demand is less than 25% of the capacity, the trip is not very profitable.
                             # since the routes are ordered by first class demand, it makes sense to continue checking for this hub anymore.
                             return routes
-                        if route['first_class_demand'] + route['business_demand'] < plane['capacity'] * 0.6 * trips:
+                        if route['first_class_demand'] + route['business_demand'] < plane['capacity'] * 0.5 * trips:
                             # the combined demand of first and business class is less than 70% of the capacity, the trip is not very profitable.
                             continue
                         e, b, f = get_seat_configuration(
@@ -547,28 +607,97 @@ def find_routes(plane, hub_iata_code, limit=1):
     return routes
 
 
-def get_hanger_capacity():
+def find_cargo_routes(plane, hub_iata_code, limit=1):
+    airports = []
+
+    with open('airports.json', 'r') as airports_file:
+        airports = json.load(airports_file)
+
+    plane_details = get_cargo_plane_details(plane['id'])
+
+    destinations = [plane['arrival']
+                    for plane in plane_details if plane['departure'] == hub_iata_code]
+    destinations.extend([plane['departure']
+                    for plane in plane_details if plane['arrival'] == hub_iata_code])
+    routes = {}
+
+    for page_number in range(1, 500):
+        try:
+            response = requests.get(
+                f'https://am4tools.com/route/search?departure={hub_iata_code}&sort=large&order=desc&page={page_number}&mode=hub')
+            if response.status_code == 404:
+                return routes
+            if response.status_code == 200 and 'routes' in response.json():
+                potential_routes = response.json()['routes']
+                for route in potential_routes:
+                    try:
+                        if route['arrival']['iata'] in destinations:
+                            # this route already exists
+                            continue
+                        if route['distance'] > plane['range']:
+                            # this route is too long for this plane
+                            continue
+                        trips = math.ceil(
+                            24/(route['distance']/(plane['engine']['speed'] * 1.1)))
+                        airport = [
+                            airport for airport in airports if airport['iata'] == route['arrival']['iata']][0]
+                        if airport['runway'] < plane['runway']:
+                            # runway in the destination is too short for this plane
+                            continue
+                        if ((route['large_demand'] * 1.06) / 0.7) + (route['heavy_demand'] * 1.06) < trips * plane['capacity']:
+                            # if the combined demand is more than trip*capacity, the trip is worth it.
+                            continue
+                        if route['large_demand'] * 1.06 < plane['capacity'] * 0.7 * 0.87 * trips:
+                            # if the large demand is less than 75% of the capacity, the trip is not very profitable.
+                            # since the routes are ordered by first class demand, it makes sense to continue checking for this hub anymore.
+                            return routes
+                        if (route['large_demand'] * 1.06) / trips > plane['capacity'] * 0.7:
+                            a, f = 0, 0
+                        else:
+                            continue
+                            large_demand = (route['large_demand'] * 1.06) / trips
+                            heavy_demand_pct = math.floor(((plane['capacity'] - (large_demand / 0.7))/plane['capacity'])*100)
+                            a, f = math.floor(heavy_demand_pct/2), math.ceil(heavy_demand_pct/2)
+
+                        routes[f"{route['departure']['iata']}-{route['arrival']['iata']}"] = {
+                            'name': f"{route['departure']['iata']}-{route['arrival']['iata']}", 'aft': a, 'fwd': f, 'distance': route['distance'], 'trips': trips}
+                        if len(routes) == limit:
+                            return routes
+                    except Exception as e:
+                        LOGGER.exception(
+                            'Error processing a route from am4tools', e)
+        except Exception as e:
+            LOGGER.exception('Error getting routes from am4tools', e)
+    return routes
+
+
+def get_hanger_capacity(plane_type='pax'):
+    if plane_type not in ['pax', 'cargo']:
+        LOGGER.exception(f'unknown plane_type {plane_type}')
+        LOGGER.exception(e)
+        return 0
     try:
         driver = get_driver()
-        driver.get('https://www.airlinemanager.com/hangars.php')
+        driver.get(f'https://www.airlinemanager.com/hangars.php?type={plane_type}')
         return int(driver.find_element(By.XPATH, '/html/body/div[3]/div[2]/table/tbody/tr[2]/td[3]/span').text)
     except Exception as e:
-        LOGGER.exception('Error getting hanger capacity', e)
+        LOGGER.exception('Error getting hanger capacity')
+        LOGGER.exception(e)
         return 0
 
 
-def buy_aircrafts():
-    hanger_capacity = get_hanger_capacity()
+def buy_cargo_aircrafts():
+    hanger_capacity = get_hanger_capacity('cargo')
     if hanger_capacity == 0:
-        LOGGER.warning('No hanger capacity available. Cannot buy new planes.')
+        LOGGER.warning('No hanger capacity available. Cannot buy new cargo planes.')
         return
     planes = []
     hubs = []
     with open('planes.json', 'r') as planes_json:
-        planes = json.load(planes_json)['pax']
+        planes = json.load(planes_json)['cargo']
     with open('hubs.json', 'r') as hubs_json:
         hubs = json.load(hubs_json)
-    plane = [plane for plane in planes if plane['shortname'] == plane_to_buy][0]
+    plane = [plane for plane in planes if plane['shortname'] == cargo_plane_to_buy][0]
     balance = get_balance()
     if balance > plane['price'] * 1.2:
         quantity = math.floor(balance / (plane['price'] * 1.1))
@@ -576,13 +705,47 @@ def buy_aircrafts():
             quantity = hanger_capacity
         LOGGER.info(f'Buying {quantity} {plane["model"]}')
         for hub in hubs:
-            routes = find_routes(plane, hub['iata'], quantity)
+            routes = find_cargo_routes(plane, hub['iata'], quantity)
             if routes is None or len(routes) == 0:
                 continue
             if len(routes) <= quantity:
                 quantity -= len(routes)
             for name, route in routes.items():
-                buy_aircraft(plane['id'], hub['hub_id'], plane['engine']['id'],
+                buy_cargo_aircraft(plane['id'], hub['hub_id'], plane['engine']['id'],
+                             name, route['aft'], route['fwd'])
+            if quantity == 0:
+                break
+        if quantity != 0:
+            LOGGER.info(
+                f'Could not buy {quantity} {plane["model"]} as there are no possible routes left.')
+
+
+def buy_pax_aircrafts():
+    hanger_capacity = get_hanger_capacity('pax')
+    if hanger_capacity == 0:
+        LOGGER.warning('No hanger capacity available. Cannot buy new pax planes.')
+        return
+    planes = []
+    hubs = []
+    with open('planes.json', 'r') as planes_json:
+        planes = json.load(planes_json)['pax']
+    with open('hubs.json', 'r') as hubs_json:
+        hubs = json.load(hubs_json)
+    plane = [plane for plane in planes if plane['shortname'] == pax_plane_to_buy][0]
+    balance = get_balance()
+    if balance > plane['price'] * 1.2:
+        quantity = math.floor(balance / (plane['price'] * 1.1))
+        if quantity > hanger_capacity:
+            quantity = hanger_capacity
+        LOGGER.info(f'Buying {quantity} {plane["model"]}')
+        for hub in hubs:
+            routes = find_pax_routes(plane, hub['iata'], quantity)
+            if routes is None or len(routes) == 0:
+                continue
+            if len(routes) <= quantity:
+                quantity -= len(routes)
+            for name, route in routes.items():
+                buy_pax_aircraft(plane['id'], hub['hub_id'], plane['engine']['id'],
                              name, route['economy'], route['business'], route['first'])
             if quantity == 0:
                 break
@@ -591,21 +754,38 @@ def buy_aircrafts():
                 f'Could not buy {quantity} {plane["model"]} as there are no possible routes left.')
 
 
-def route_aircrafts():
+def route_pax_aircrafts():
     planes = []
     with open('planes.json', 'r') as planes_json:
         planes = json.load(planes_json)['pax']
-    plane = [plane for plane in planes if plane['shortname'] == plane_to_buy][0]
-    for plane_data in get_plane_details(plane['id']):
+    plane = [plane for plane in planes if plane['shortname'] == pax_plane_to_buy][0]
+    for plane_data in get_pax_plane_details(plane['id']):
         # possible vales are ['Maintenance', 'Routed', 'Pending', 'Grounded', 'Parked']
         if plane_data['status'] in ['Parked']:
-            modify_aircraft(plane_data['id'], plane_data['economy'],
+            modify_pax_aircraft(plane_data['id'], plane_data['economy'],
                             plane_data['business'], plane_data['first'])
             route_details, ticket_prices = get_route_details(
-                plane_data['departure'], plane_data['arrival'])
+                plane_data['departure'], plane_data['arrival'], 'pax')
             create_route(plane_data['id'],
                          plane_data['name'], route_details['arrival']['id'], ticket_prices['realism']['ticketY'],
                          ticket_prices['realism']['ticketJ'], ticket_prices['realism']['ticketF'])
+
+
+def route_cargo_aircrafts():
+    planes = []
+    with open('planes.json', 'r') as planes_json:
+        planes = json.load(planes_json)['cargo']
+    plane = [plane for plane in planes if plane['shortname'] == cargo_plane_to_buy][0]
+    for plane_data in get_cargo_plane_details(plane['id']):
+        # possible vales are ['Maintenance', 'Routed', 'Pending', 'Grounded', 'Parked']
+        if plane_data['status'] in ['Parked']:
+            modify_cargo_aircraft(plane_data['id'], plane_data['large'],
+                            plane_data['heavy'])
+            route_details, ticket_prices = get_route_details(
+                plane_data['departure'], plane_data['arrival'], 'cargo')
+            create_cargo_route(plane_data['id'],
+                         plane_data['name'], route_details['arrival']['id'], ticket_prices['realism']['ticketL'],
+                         ticket_prices['realism']['ticketH'])
 
 
 def start_marketing_campaign(type, campaign, duration):
@@ -629,6 +809,7 @@ def marketing():
         # start all campaigns
         start_marketing_campaign(1, 4, 3)
         start_marketing_campaign(5, 4, 3)
+        start_marketing_campaign(2, 4, 3)
     else:
         active_campaign = [campaign.text.strip()
                            for campaign in campaigns if campaign.text.strip() != '']
@@ -639,9 +820,8 @@ def marketing():
             # start aircraft campaign
             start_marketing_campaign(5, 4, 3)
         if 'Cargo reputation' not in active_campaign:
-            # currently, i am not running any cargo planes.
-            # hence, this campaign is waste of money.
-            pass
+            # start cargo campaign
+            start_marketing_campaign(2, 4, 3)
 
 
 @app.route('/')
@@ -683,7 +863,7 @@ def update_ticket_price():
 def update_fleet(aircraft_type_id, max_seat_capacity, trips):
     login(username, password)
 
-    for plane_data in get_plane_details(aircraft_type_id):
+    for plane_data in get_pax_plane_details(aircraft_type_id):
         # possible vales are ['Maintenance', 'Routed', 'Pending', 'Grounded', 'Parked']
         if plane_data['status'] in ['Pending', 'Grounded', 'Maintenance']:
             continue
@@ -695,7 +875,7 @@ def update_fleet(aircraft_type_id, max_seat_capacity, trips):
 
         if plane_data['status'] in ['Parked']:
             route_details, ticket_prices = get_route_details(
-                plane_data['departure'], plane_data['arrival'])
+                plane_data['departure'], plane_data['arrival'], 'pax')
             create_route(plane_data['id'],
                          plane_data['name'], route_details['arrival']['id'], ticket_prices['realism']['ticketY'],
                          ticket_prices['realism']['ticketJ'], ticket_prices['realism']['ticketF'])
@@ -703,7 +883,7 @@ def update_fleet(aircraft_type_id, max_seat_capacity, trips):
         if abs(e - int(plane_data['economy'])) < 5 and abs(b - int(plane_data['business'])) < 5 and abs(f - int(plane_data['first'])) < 5:
             continue
 
-        modify_aircraft(plane_data['id'], e, b, f)
+        modify_pax_aircraft(plane_data['id'], e, b, f)
 
     logout()
 
