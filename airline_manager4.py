@@ -9,7 +9,6 @@ from flask import Flask
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -66,15 +65,13 @@ w_driver = None
 
 
 def save_screenshot_to_bucket(file_name):
-    LOGGER.debug(f'current directory is {os.getcwd()}')
-    files = [f for f in os.listdir('.')]
-    LOGGER.debug(f'Following files are in the current directory')
-    LOGGER.debug(', '.join(files))
+    screenshot_folder = 'screenshots'
+    date_string = datetime.now().strftime('%Y-%m-%d')
+    timestamp = datetime.now().strftime('%H:%M:%S')
     try:
         client = storage.Client()
         bucket = client.get_bucket(bucket_name)
-        new_blob = bucket.blob(file_name.replace(
-            '.png', f'{datetime.now()}.png'))
+        new_blob = bucket.blob(f"{screenshot_folder}/{date_string}/{file_name.replace('.png', f'{timestamp}.png')}")
         LOGGER.info(f'uploading {file_name} to the bucket')
         new_blob.upload_from_filename(filename=file_name)
     except Exception as e:
@@ -279,7 +276,7 @@ def get_current_time_window():
 def log_fuel_stats():
     current_month = datetime.now(timezone.utc).strftime("%b")
     current_year = datetime.now(timezone.utc).strftime("%Y")
-    fuel_log_file = f'{current_year}_{current_month}_fuel_stats.json'
+    fuel_log_file = f'fuel_log/{current_year}/{current_month}_fuel_stats.json'
     fuel_price, _, _ = get_fuel_stats()
     co2_price, _, _ = get_co2_stats()
     LOGGER.debug(f'Fuel Price: {fuel_price}')
