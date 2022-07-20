@@ -446,8 +446,8 @@ def get_cargo_plane_details(aircraft_type_id):
         plane_seats = element.find_element(
             By.XPATH, f'.//div[3]').text
 
-        large = plane_seats.split('\n')[0].split(': ')[1]
-        heavy = plane_seats.split('\n')[1].split(': ')[1]
+        large = plane_seats.split('\n')[0].split(': ')[1].replace(' Lbs', '').replace(',', '')
+        heavy = plane_seats.split('\n')[1].split(': ')[1].replace(' Lbs', '').replace(',', '')
 
         planes_data.append({'id': plane_id, 'name': plane_name, 'departure': plane_name.split(
             '-')[0], 'arrival': plane_name.split('-')[1], 'status': plane_status, 'large': large, 'heavy': heavy})
@@ -528,7 +528,6 @@ def modify_pax_aircraft(aircraft_id, economy, business, first):
 
 
 def modify_cargo_aircraft(aircraft_id, large, heavy):
-    LOGGER.info(f'calling url https://www.airlinemanager.com/maint_plan_do.php?mode=do&modType=cargo&id={aircraft_id}&type=modify&large={large}&heavy={heavy}&mod1=1&mod2=1&mod3=1')
     driver = get_driver()
     # 'https://www.airlinemanager.com/maint_plan_do.php?mode=do&modType=cargo&id=31068059&type=modify&large=0&heavy=303700&mod1=1&mod2=1&mod3=1'
     driver.get(
