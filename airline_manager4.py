@@ -528,10 +528,14 @@ def modify_pax_aircraft(aircraft_id, economy, business, first):
 
 
 def modify_cargo_aircraft(aircraft_id, large, heavy):
+    LOGGER.info(f'modifying cargo aircraft {aircraft_id} with heavy {heavy} and large {large}')
+    if large != 244860:
+        large = 244860
     driver = get_driver()
     # 'https://www.airlinemanager.com/maint_plan_do.php?mode=do&modType=cargo&id=31068059&type=modify&large=0&heavy=303700&mod1=1&mod2=1&mod3=1'
     driver.get(
         f'https://www.airlinemanager.com/maint_plan_do.php?mode=do&modType=cargo&id={aircraft_id}&type=modify&large={large}&heavy={heavy}&mod1=1&mod2=1&mod3=1')
+    LOGGER.info(f'https://www.airlinemanager.com/maint_plan_do.php?mode=do&modType=cargo&id={aircraft_id}&type=modify&large={large}&heavy={heavy}&mod1=1&mod2=1&mod3=1')
     LOGGER.info(f'Modification scheduled for cargo aircraft {aircraft_id}')
 
 
