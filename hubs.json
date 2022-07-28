@@ -52,6 +52,19 @@
     "country_code": "jp"
   },
   {
+    "id": 1427,
+    "hub_id": 4014875,
+    "iata": "JFK",
+    "icao": "KJFK",
+    "runway": 14572,
+    "market": 79,
+    "longitude": -73.778900143,
+    "latitude": 40.639801011,
+    "city": "New York JFK",
+    "country": "United States",
+    "country_code": "us"
+  },
+  {
     "id": 3512,
     "hub_id": 3502287,
     "iata": "DEL",

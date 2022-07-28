@@ -249,8 +249,8 @@ def perform_co2_ops():
     co2_holding_num = int(co2_holding.replace(',', '').replace(' ', ''))
     if co2_price_num < (111 if co2_price_threshold is None else int(co2_price_threshold)):
         balance = get_balance()
-        if (co2_capacity_num * co2_price_num)/1000 < balance:
-            buy_co2(co2_capacity_num)
+        if ((co2_capacity_num if co2_holding_num > 0 else co2_capacity_num - co2_holding_num) * co2_price_num)/1000 < balance:
+            buy_co2(co2_capacity_num if co2_holding_num > 0 else co2_capacity_num - co2_holding_num)
         else:
             purchase_qty = (balance * 1000)/co2_price_num
             buy_co2(purchase_qty)
@@ -529,8 +529,8 @@ def modify_pax_aircraft(aircraft_id, economy, business, first):
 
 def modify_cargo_aircraft(aircraft_id, large, heavy):
     LOGGER.info(f'modifying cargo aircraft {aircraft_id} with heavy {heavy} and large {large}')
-    if large != 244860:
-        large = 244860
+    if large != 330000:
+        large = 330000
     driver = get_driver()
     # 'https://www.airlinemanager.com/maint_plan_do.php?mode=do&modType=cargo&id=31068059&type=modify&large=0&heavy=303700&mod1=1&mod2=1&mod3=1'
     driver.get(
