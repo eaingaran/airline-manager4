@@ -827,6 +827,7 @@ def marketing():
 
 @app.route('/')
 def run_app():
+    logout()
     login(username, password)
     perform_routine_ops()
     logout()
