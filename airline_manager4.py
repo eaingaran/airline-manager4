@@ -393,6 +393,8 @@ def buy_pax_aircraft(plane_id, hub_id, engine_id, plane_name, economy, business,
     driver = get_driver()
     driver.get(f'https://www.airlinemanager.com/ac_order_do.php?id={plane_id}&hub={hub_id}&e={economy}&b={business}&'
                f'f={first}&r={plane_name}&engine={engine_id}&amount=1')
+    LOGGER.info(f'https://www.airlinemanager.com/ac_order_do.php?id={plane_id}&hub={hub_id}&e={economy}&b={business}&'
+               f'f={first}&r={plane_name}&engine={engine_id}&amount=1')
     LOGGER.info(f'bought pax plane {plane_name}')
 
 
