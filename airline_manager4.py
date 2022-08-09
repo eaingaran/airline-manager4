@@ -556,10 +556,17 @@ def find_pax_routes(plane, hub_iata_code, limit=1):
 
     plane_details = get_pax_plane_details(plane['id'])
 
+    # include a339 routes in check as well...
+    a339_planes = get_pax_plane_details(308)
+
     destinations = [plane['arrival']
                     for plane in plane_details if plane['departure'] == hub_iata_code]
     destinations.extend([plane['departure']
                     for plane in plane_details if plane['arrival'] == hub_iata_code])
+    destinations.extend([plane['arrival']
+                    for plane in a339_planes if plane['departure'] == hub_iata_code])
+    destinations.extend([plane['departure']
+                    for plane in a339_planes if plane['arrival'] == hub_iata_code])
     routes = {}
 
     for page_number in range(1, 500):
