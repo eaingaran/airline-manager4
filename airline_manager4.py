@@ -3,6 +3,7 @@ import os
 import requests
 from datetime import datetime, timezone
 import math
+import random
 
 from flask import Flask
 
@@ -708,6 +709,7 @@ def buy_cargo_aircrafts():
     with open('hubs.json', 'r') as hubs_json:
         hubs = json.load(hubs_json)
     plane = [plane for plane in planes if plane['shortname'] == cargo_plane_to_buy][0]
+    random.shuffle(hubs)
     balance = get_balance()
     if balance > plane['price'] * 1.2:
         quantity = math.floor(balance / (plane['price'] * 1.1))
@@ -742,6 +744,7 @@ def buy_pax_aircrafts():
     with open('hubs.json', 'r') as hubs_json:
         hubs = json.load(hubs_json)
     plane = [plane for plane in planes if plane['shortname'] == pax_plane_to_buy][0]
+    random.shuffle(hubs)
     balance = get_balance()
     if balance > plane['price'] * 1.2:
         quantity = math.floor(balance / (plane['price'] * 1.1))
