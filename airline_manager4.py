@@ -476,20 +476,24 @@ def get_pax_plane_details(aircraft_type_id):
     elements = driver.find_elements(By.XPATH, '/html/body/div[2]/div/div')
 
     for element in elements:
-        LOGGER.info(element.text)
+        try:
+            plane_id = element.find_element(
+                By.XPATH, f'.//div[1]/span').get_attribute("onclick").split(',')[1]
+            plane_name = element.find_element(
+                By.XPATH, f'.//div[2]/a').text
+            plane_status = element.find_element(
+                By.XPATH, f'.//div[4]/span').text
+            plane_seats = element.find_element(
+                By.XPATH, f'.//div[3]').text
 
-        plane_id = element.find_element(
-            By.XPATH, f'.//div[1]/span').get_attribute("onclick").split(',')[1]
-        plane_name = element.find_element(
-            By.XPATH, f'.//div[2]/a').text
-        plane_status = element.find_element(
-            By.XPATH, f'.//div[4]/span').text
-        plane_seats = element.find_element(
-            By.XPATH, f'.//div[3]').text
-
-        economy = plane_seats.split('\n')[0].split(': ')[1]
-        business = plane_seats.split('\n')[1].split(': ')[1]
-        first = plane_seats.split('\n')[2].split(': ')[1]
+            economy = plane_seats.split('\n')[0].split(': ')[1]
+            business = plane_seats.split('\n')[1].split(': ')[1]
+            first = plane_seats.split('\n')[2].split(': ')[1]
+        except Exception as e:
+            LOGGER.exception(
+                'something went wrong when getting plane details', e)
+            LOGGER.info(element.text)
+            raise e
 
         planes_data.append({'id': plane_id, 'name': plane_name, 'departure': plane_name.split(
             '-')[0], 'arrival': plane_name.split('-')[1], 'status': plane_status, 'economy': economy, 'business': business, 'first': first})
