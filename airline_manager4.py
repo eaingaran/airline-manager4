@@ -49,7 +49,7 @@ low_fuel_price_threshold = os.environ.get('MAX_BUY_LOW_FUEL_PRICE', 800)
 co2_price_threshold = os.environ.get('MAX_BUY_CO2_PRICE', 111)
 low_co2_level = os.environ.get('LOW_CO2_LEVEL', 20000000)
 low_co2_price_threshold = os.environ.get('MAX_BUY_LOW_CO2_PRICE', 140)
-pax_plane_to_buy = os.environ.get('PAX_PLANE_SHORT_NAME_TO_BUY', 'a339')
+pax_plane_to_buy = os.environ.get('PAX_PLANE_SHORT_NAME_TO_BUY', 'a388')
 cargo_plane_to_buy = os.environ.get('CARGO_PLANE_SHORT_NAME_TO_BUY', 'a388f')
 bucket_name = os.environ.get('BUCKET_NAME', 'cloud-run-am4')
 
@@ -308,6 +308,25 @@ def log_fuel_stats():
             data=json.dumps(fuel_stats), content_type='application/json')
 
 
+def maintain_lounges():
+    driver = get_driver()
+    driver.get('https://www.airlinemanager.com/hubs_lounge_manage.php')
+    LOGGER.info('maintaining lounges')
+    # get the table, loop through each row, and check the percetnage and maintain if the percentage is higher than a threshold.
+    # table class is table
+    table = driver.find_element_by_class_name('table')
+    # get the rows, loop through each row, and check the percetnage and maintain if the percentage is higher than a threshold.
+    rows = table.find_elements_by_tag_name('tr')
+    for row in rows:
+        lounge_id = int(row.get_attribute('id').replace('lList', ''))
+        percentage = int(row.find_element(By.XPATH, 'td[2]/b').text.replace('%', ''))
+        LOGGER.info(f'lounge {lounge_id} has {percentage}%')
+        if percentage > 20:
+            LOGGER.info(f'maintaining lounge {lounge_id}')
+            driver.get(f'https://www.airlinemanager.com/lounge_action.php?id={lounge_id}&ref=manage')
+            # call the maintaince api
+
+
 def perform_routine_ops():
     # store fuel and CO2 prices
     log_fuel_stats()
@@ -321,6 +340,8 @@ def perform_routine_ops():
     perform_co2_ops()
     # perform maintenance, if needed
     check_aircrafts()
+    # maintain lounges
+    maintain_lounges()
     # buy planes if there is enough money
     # buy pax planes
     buy_pax_aircrafts()
@@ -469,6 +490,7 @@ def get_pax_plane_details(aircraft_type_id):
     elements = driver.find_elements(By.XPATH, '/html/body/div[2]/div/div')
 
     for element in elements:
+        LOGGER.info(element.text)
 
         plane_id = element.find_element(
             By.XPATH, f'.//div[1]/span').get_attribute("onclick").split(',')[1]
@@ -549,26 +571,18 @@ def check_aircraft(aircraft_id):
     LOGGER.info(f'A-Check scheduled for {aircraft_id}')
 
 
-def find_pax_routes(plane, hub_iata_code, limit=1):
+def find_pax_routes(plane, hub_iata_code, plane_details, limit=1):
     airports = []
 
     with open('airports.json', 'r') as airports_file:
         airports = json.load(airports_file)
 
-    plane_details = get_pax_plane_details(plane['id'])
-
-    # include a339 routes in check as well...
-    a339_planes = get_pax_plane_details(308)
+    routes = {}
 
     destinations = [plane['arrival']
                     for plane in plane_details if plane['departure'] == hub_iata_code]
     destinations.extend([plane['departure']
                     for plane in plane_details if plane['arrival'] == hub_iata_code])
-    destinations.extend([plane['arrival']
-                    for plane in a339_planes if plane['departure'] == hub_iata_code])
-    destinations.extend([plane['departure']
-                    for plane in a339_planes if plane['arrival'] == hub_iata_code])
-    routes = {}
 
     for page_number in range(1, 500):
         try:
@@ -734,7 +748,7 @@ def buy_cargo_aircrafts():
 
 def buy_pax_aircrafts():
     hanger_capacity = get_hanger_capacity('pax')
-    if hanger_capacity == 0:
+    if hanger_capacity == 0 and False:
         LOGGER.warning('No hanger capacity available. Cannot buy new pax planes.')
         return
     planes = []
@@ -751,8 +765,13 @@ def buy_pax_aircrafts():
         if quantity > hanger_capacity:
             quantity = hanger_capacity
         LOGGER.info(f'Buying {quantity} {plane["model"]}')
+        plane_details = get_pax_plane_details(plane['id'])
+
+        # include a339 routes in check as well...
+        plane_details.extend(get_pax_plane_details(308))
+
         for hub in hubs:
-            routes = find_pax_routes(plane, hub['iata'], quantity)
+            routes = find_pax_routes(plane, hub['iata'], plane_details, quantity)
             if routes is None or len(routes) == 0:
                 continue
             if len(routes) <= quantity:
