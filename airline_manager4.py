@@ -748,7 +748,7 @@ def buy_cargo_aircrafts():
 
 def buy_pax_aircrafts():
     hanger_capacity = get_hanger_capacity('pax')
-    if hanger_capacity == 0 and False:
+    if hanger_capacity == 0:
         LOGGER.warning('No hanger capacity available. Cannot buy new pax planes.')
         return
     planes = []
