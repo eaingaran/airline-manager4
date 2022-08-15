@@ -115,16 +115,6 @@ def login(u_name, p_word):
             By.XPATH, "/html/body/div[4]/div/div[2]/div[1]/div/button[2]")
     except TimeoutException as e:
         LOGGER.exception(f'login button not found. waiting timed out.', e)
-        result = driver.save_screenshot(os.path.join(
-            os.getcwd(), 'login_page_error.png'))
-        LOGGER.debug(f'result of screenshot saving is {result}')
-        LOGGER.debug(f'current directory is {os.getcwd()}')
-        files = [f for f in os.listdir('.')]
-        LOGGER.debug(f'Following files are in the current directory')
-        LOGGER.debug(', '.join(files))
-        if result:
-            save_screenshot_to_bucket(os.path.join(
-                os.getcwd(), 'login_page_error.png'))
         driver.get('https://www.airlinemanager.com/')
 
     if m_login_btn is not None and m_login_btn.is_displayed():
@@ -140,10 +130,6 @@ def login(u_name, p_word):
                 EC.element_to_be_clickable((By.ID, 'flightInfoToggleIcon')))
         except TimeoutException as e:
             LOGGER.exception(f'login button not found. waiting timed out.', e)
-            driver.save_screenshot(os.path.join(
-                os.getcwd(), 'login_error.png'))
-            save_screenshot_to_bucket(
-                os.path.join(os.getcwd(), 'login_error.png'))
             driver.get(
                 'https://www.airlinemanager.com/banking_account.php?id=0')
             if driver.find_element(By.XPATH, '/html/body/div[4]').text == 'Transaction history':
