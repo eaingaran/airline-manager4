@@ -601,7 +601,7 @@ def find_pax_routes(plane, hub_iata_code, plane_details, limit=1):
                         if route['first_class_demand'] + route['business_demand'] + route['economic_demand'] < trips * plane['capacity']:
                             # if the combined demand is more than n*capacity, the trip is worth it. (n is the number of trips)
                             continue
-                        if route['first_class_demand'] < plane['capacity'] * 0.18 * trips:
+                        if route['first_class_demand'] < plane['capacity'] * 0.167 * trips:
                             # if the first class demand is less than 18% of the capacity, the trip is not very profitable.
                             # since the routes are ordered by first class demand, it makes sense to continue checking for this hub anymore.
                             return routes
