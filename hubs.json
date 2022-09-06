@@ -297,5 +297,57 @@
     "city": "Sydney intl",
     "country": "Australia",
     "country_code": "au"
+  },
+  {
+    "id": 1877,
+    "hub_id": 4373080,
+    "iata": "CDG",
+    "icao": "LFPG",
+    "runway": 13829,
+    "market": 41,
+    "longitude": 2.550000004,
+    "latitude": 49.012798016,
+    "city": "Paris Charles de Gaulle",
+    "country": "France",
+    "country_code": "fr"
+  },
+  {
+    "id": 599,
+    "hub_id": 4373084,
+    "iata": "AMS",
+    "icao": "EHAM",
+    "runway": 12467,
+    "market": 47,
+    "longitude": 4.763890017,
+    "latitude": 52.308601025,
+    "city": "Amsterdam",
+    "country": "Netherlands",
+    "country_code": "nl"
+  },
+  {
+    "id": 1791,
+    "hub_id": 4373095,
+    "iata": "MAD",
+    "icao": "LEMD",
+    "runway": 13711,
+    "market": 89,
+    "longitude": -3.562639996,
+    "latitude": 40.471925981,
+    "city": "Madrid Adolfo Suarez",
+    "country": "Spain",
+    "country_code": "es"
+  },
+  {
+    "id": 2545,
+    "hub_id": 4373101,
+    "iata": "DIA",
+    "icao": "OTBD",
+    "runway": 15000,
+    "market": 84,
+    "longitude": 51.565101998,
+    "latitude": 25.261100993,
+    "city": "Doha",
+    "country": "Qatar",
+    "country_code": "qa"
   }
 ]
