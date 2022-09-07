@@ -605,7 +605,7 @@ def find_pax_routes(plane, hub_iata_code, plane_details, limit=1):
                             # if the first class demand is less than 18% of the capacity, the trip is not very profitable.
                             # since the routes are ordered by first class demand, it makes sense to continue checking for this hub anymore.
                             return routes
-                        if route['first_class_demand'] + route['business_demand'] < plane['capacity'] * 0.45 * trips:
+                        if route['first_class_demand'] + route['business_demand'] < plane['capacity'] * 0.40 * trips:
                             # the combined demand of first and business class is less than 45% of the capacity, the trip is not very profitable.
                             continue
                         e, b, f = get_seat_configuration(
@@ -751,7 +751,7 @@ def buy_pax_aircrafts():
     plane = [plane for plane in planes if plane['shortname'] == pax_plane_to_buy][0]
     random.shuffle(hubs)
     balance = get_balance()
-    if balance > plane['price'] * 1.2:
+    if balance > plane['price'] * 1.1:
         quantity = math.floor(balance / (plane['price'] * 1.1))
         if quantity > hanger_capacity:
             quantity = hanger_capacity
