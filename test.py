@@ -265,7 +265,7 @@ if __name__ == '__main__':
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     w_driver = webdriver.Chrome(options=options,
-                                executable_path='~/Sources/PycharmProjects/am4/drivers/chromedriver')
+                                executable_path='./drivers/chromedriver')
     w_driver.maximize_window()
 
     am4.w_driver = w_driver
@@ -282,8 +282,8 @@ if __name__ == '__main__':
     #print(planes_data.__repr__())
     # am4.buy_pax_aircrafts()
 
-    #check_available_380_routes()
-    check_plane_profits(308)
+    check_available_380_routes()
+    # check_plane_profits(308)
     
     am4.logout()
 
