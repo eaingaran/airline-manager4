@@ -44,10 +44,10 @@ app = Flask(app_name)
 username = os.environ.get('USERNAME')
 password = os.environ.get('PASSWORD')
 fuel_price_threshold = os.environ.get('MAX_BUY_FUEL_PRICE', 400)
-low_fuel_level = os.environ.get('LOW_FUEL_LEVEL', 20000000)
+low_fuel_level = os.environ.get('LOW_FUEL_LEVEL', 30000000)
 low_fuel_price_threshold = os.environ.get('MAX_BUY_LOW_FUEL_PRICE', 800)
 co2_price_threshold = os.environ.get('MAX_BUY_CO2_PRICE', 111)
-low_co2_level = os.environ.get('LOW_CO2_LEVEL', 20000000)
+low_co2_level = os.environ.get('LOW_CO2_LEVEL', 40000000)
 low_co2_price_threshold = os.environ.get('MAX_BUY_LOW_CO2_PRICE', 140)
 pax_plane_to_buy = os.environ.get('PAX_PLANE_SHORT_NAME_TO_BUY', 'a388')
 cargo_plane_to_buy = os.environ.get('CARGO_PLANE_SHORT_NAME_TO_BUY', 'a388f')
@@ -163,6 +163,16 @@ def get_fuel_stats():
     return price, capacity, holding
 
 
+def get_airline_status():
+    driver = get_driver()
+    driver.get('https://www.airlinemanager.com/co2.php')
+    classes = driver.find_element(By.ID, 'eco-state-1').get_attribute('class').split(' ')
+    if 'hidden' in classes:
+        return 'Eco-unfriendly'
+    else:
+        return 'Eco-friendly'
+
+
 def get_co2_stats():
     driver = get_driver()
     driver.get('https://www.airlinemanager.com/co2.php')
@@ -176,9 +186,17 @@ def get_co2_stats():
 
 
 def depart_planes():
+    pax_rep, cargo_rep = get_reputation()
+    if get_airline_status() == 'Eco-unfriendly':
+        LOGGER.warning('Airline status is "Eco-unfriendly". Not departing planes')
+        return False
+    if pax_rep < 80:
+        LOGGER.warning(f'Airline Reputation (PAX) is {pax_rep}. Not departing planes.')
+        return False
     driver = get_driver()
     driver.get('https://www.airlinemanager.com/route_depart.php?mode=all&ids=x')
     LOGGER.info('all planes departed')
+    return True
 
 
 def get_balance():
@@ -319,8 +337,14 @@ def perform_routine_ops():
     log_fuel_stats()
     # check and perform marketing
     marketing()
+    # perform fuel ops
+    perform_fuel_ops()
+    # perform co2 ops
+    perform_co2_ops()
     # depart planes
-    depart_planes()
+    if depart_planes():
+        # this is to handle departing more than 20 planes in one run
+        depart_planes()
     # perform fuel ops
     perform_fuel_ops()
     # perform co2 ops
@@ -822,6 +846,16 @@ def start_marketing_campaign(type, campaign, duration):
         f'{campaign_map["type"][type]} campaign started for {campaign_map["campaign"][campaign]} with duration {campaign_map["duration"][duration]} hours')
 
 
+def get_reputation():
+    driver = get_driver()
+    driver.get('https://www.airlinemanager.com/marketing.php')
+    pax_rep = int(driver.find_element(By.XPATH, '/html/body/div/div[1]/div[1]/div').text)
+    cargo_rep = int(driver.find_element(By.XPATH, '/html/body/div/div[1]/div[2]/div').text)
+    # /html/body/div/div[1]/div[1]/div
+    # /html/body/div/div[1]/div[2]/div
+    return pax_rep, cargo_rep
+
+
 def marketing():
     driver = get_driver()
     driver.get('https://www.airlinemanager.com/marketing.php')
@@ -832,7 +866,8 @@ def marketing():
         # start all campaigns
         start_marketing_campaign(1, 4, 3)
         start_marketing_campaign(5, 4, 3)
-        start_marketing_campaign(2, 4, 3)
+        # cargo marketing is not worth at this point. 
+        # start_marketing_campaign(2, 4, 3)
     else:
         active_campaign = [campaign.text.strip()
                            for campaign in campaigns if campaign.text.strip() != '']
@@ -842,9 +877,10 @@ def marketing():
         if 'Eco friendly' not in active_campaign:
             # start aircraft campaign
             start_marketing_campaign(5, 4, 3)
-        if 'Cargo reputation' not in active_campaign:
-            # start cargo campaign
-            start_marketing_campaign(2, 4, 3)
+        # cargo marketing is not worth at this point. 
+        # if 'Cargo reputation' not in active_campaign:
+        #     # start cargo campaign
+        #     start_marketing_campaign(2, 4, 3)
 
 
 @app.route('/')

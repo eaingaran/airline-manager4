@@ -234,10 +234,16 @@ def check_plane_profits(aircraft_type_id):
         age = driver.find_element(By.XPATH, f'//*[@id="detailsGroundedBg"]/div[4]/div/div[1]/span[4]').text
         count = 0
         total = 0
+        maximum = 0
+        minimum = 999999999
         for i in range(1, 21):
             try:
                 revenue = int(driver.find_element(By.XPATH, f'//*[@id="flight-history"]/div[{i}]/div[4]').text.replace('$', '').replace(',', ''))
                 total += revenue
+                if maximum < revenue:
+                    maximum = revenue
+                if minimum > revenue:
+                    minimum = revenue
                 count += 1
             except Exception as e:
                 traceback.print_exc()
@@ -248,11 +254,13 @@ def check_plane_profits(aircraft_type_id):
             average_revenue = 0
         plane['avg_revenue'] = average_revenue
         plane['age'] = age
+        plane['max'] = maximum
+        plane['min'] = minimum
     
     sorted_plane_data = sorted(planes_data, key=lambda d: d['avg_revenue']) 
 
     for plane in sorted_plane_data:
-        print(f'{plane["name"]} bought {plane["age"]} has an average revenue of {plane["avg_revenue"]}')
+        print(f'{plane["name"]} bought {plane["age"]} has an average revenue of {plane["avg_revenue"]} (max: {plane["max"]} and min: {plane["min"]})')
 
 if __name__ == '__main__':
     am4.username = os.getenv("AM_USERNAME", "")
@@ -282,8 +290,11 @@ if __name__ == '__main__':
     #print(planes_data.__repr__())
     # am4.buy_pax_aircrafts()
 
-    check_available_380_routes()
-    # check_plane_profits(308)
+    # check_available_380_routes()
+    # check_plane_profits(344) # 344 308
+    # print(am4.get_airline_status())
+    pax_rep, cargo_rep = am4.get_reputation()
+    print(pax_rep, cargo_rep)
     
     am4.logout()
 
