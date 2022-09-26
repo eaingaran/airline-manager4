@@ -775,8 +775,8 @@ def buy_pax_aircrafts():
     plane = [plane for plane in planes if plane['shortname'] == pax_plane_to_buy][0]
     random.shuffle(hubs)
     balance = get_balance()
-    if balance > plane['price'] * 1.1:
-        quantity = math.floor(balance / (plane['price'] * 1.1))
+    if balance > plane['price'] * 1.5:
+        quantity = math.floor(balance / (plane['price'] * 1.5))
         if quantity > hanger_capacity:
             quantity = hanger_capacity
         LOGGER.info(f'Buying {quantity} {plane["model"]}')
