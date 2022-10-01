@@ -353,15 +353,15 @@ def perform_routine_ops():
     check_aircrafts()
     # maintain lounges
     maintain_lounges()
+    # route parked planes, if any
+    route_pax_aircrafts()
+    # route parked planes, if any
+    route_cargo_aircrafts()
     # buy planes if there is enough money
     # buy pax planes
     buy_pax_aircrafts()
-    # route parked planes, if any
-    route_pax_aircrafts()
     # buy cargo planes
     buy_cargo_aircrafts()
-    # route parked planes, if any
-    route_cargo_aircrafts()
 
 
 def set_ticket_price(route_id, e, b, f):
@@ -448,6 +448,9 @@ def check_aircrafts():
             aircraft_id = aircraft.find_element(
                 By.XPATH, './/div[3]') .get_property('id').replace('controls', '')
             aircraft_location = aircraft.text.split('\n')[4]
+            if 'a330' in aircraft.find_element(By.XPATH, './/div[1]/img') .get_property('src'):
+                # plan is to decommission these plane. no need to maintain them
+                continue
             if aircraft_location == 'Not at base':
                 continue
             time_to_check = aircraft.text.split('\n')[6]
