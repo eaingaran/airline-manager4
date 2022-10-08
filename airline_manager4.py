@@ -532,9 +532,9 @@ def get_pax_plane_details(aircraft_type_id):
 def get_seat_configuration(departure, arrival, max_seat_capacity, trips):
     route_details, _ = get_route_details(departure, arrival, 'pax')
 
-    f = math.ceil(route_details['first_class_demand']/trips) + 1
-    b = math.ceil(route_details['business_demand']/trips) + 1
-    e = math.ceil(route_details['economic_demand']/trips) + 1
+    f = math.ceil(route_details['first_class_demand']/trips * 1.1) 
+    b = math.ceil(route_details['business_demand']/trips * 1.1)
+    e = math.ceil(route_details['economic_demand']/trips * 1.1)
 
     if f >= max_seat_capacity:
         _e = 0
@@ -619,7 +619,7 @@ def find_pax_routes(plane, hub_iata_code, plane_details, limit=1):
                             # this route is too long for this plane
                             continue
                         trips = math.ceil(
-                            24/(route['distance']/(plane['engine']['speed'] * 1.1)))
+                            23/(route['distance']/(plane['engine']['speed'] * 1.1)))
                         airport = [
                             airport for airport in airports if airport['iata'] == route['arrival']['iata']][0]
                         if airport['runway'] < plane['runway']:
@@ -628,11 +628,11 @@ def find_pax_routes(plane, hub_iata_code, plane_details, limit=1):
                         if route['first_class_demand'] + route['business_demand'] + route['economic_demand'] < trips * plane['capacity']:
                             # if the combined demand is more than n*capacity, the trip is worth it. (n is the number of trips)
                             continue
-                        if route['first_class_demand'] < plane['capacity'] * 0.167 * trips:
+                        if route['first_class_demand'] <= plane['capacity'] * 0.1667 * trips * 0.95:
                             # if the first class demand is less than 18% of the capacity, the trip is not very profitable.
                             # since the routes are ordered by first class demand, it makes sense to continue checking for this hub anymore.
                             return routes
-                        if route['first_class_demand'] + route['business_demand'] < plane['capacity'] * 0.30 * trips:
+                        if route['first_class_demand'] + route['business_demand'] <= plane['capacity'] * 0.4 * trips * 0.95:
                             # the combined demand of first and business class is less than 45% of the capacity, the trip is not very profitable.
                             continue
                         e, b, f = get_seat_configuration(
