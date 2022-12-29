@@ -399,7 +399,7 @@ def get_routes():
 
 def get_route_details(departure, arrival, type='pax'):
     response = requests.get(
-        f'https://am4tools.com/route/ticket?type={type}&mode=normal&departure={departure}&arrival={arrival}')
+        f'https://am4help.com/route/ticket?type={type}&mode=normal&departure={departure}&arrival={arrival}')
     if response.status_code == 200:
         route_details = json.loads(response.text)
     else:
@@ -605,7 +605,7 @@ def find_pax_routes(plane, hub_iata_code, plane_details, limit=1):
     for page_number in range(1, 500):
         try:
             response = requests.get(
-                f'https://am4tools.com/route/search?departure={hub_iata_code}&sort=firstClass&order=desc&page={page_number}&mode=hub')
+                f'https://am4help.com/route/search?departure={hub_iata_code}&sort=firstClass&order=desc&page={page_number}&mode=hub')
             if response.status_code == 404:
                 return routes
             if response.status_code == 200 and 'routes' in response.json():
@@ -644,9 +644,9 @@ def find_pax_routes(plane, hub_iata_code, plane_details, limit=1):
                             return routes
                     except Exception as e:
                         LOGGER.exception(
-                            'Error processing a route from am4tools', e)
+                            'Error processing a route from am4help', e)
         except Exception as e:
-            LOGGER.exception('Error getting routes from am4tools', e)
+            LOGGER.exception('Error getting routes from am4help', e)
     return routes
 
 
@@ -667,7 +667,7 @@ def find_cargo_routes(plane, hub_iata_code, limit=1):
     for page_number in range(1, 500):
         try:
             response = requests.get(
-                f'https://am4tools.com/route/search?departure={hub_iata_code}&sort=large&order=desc&page={page_number}&mode=hub')
+                f'https://am4help.com/route/search?departure={hub_iata_code}&sort=large&order=desc&page={page_number}&mode=hub')
             if response.status_code == 404:
                 return routes
             if response.status_code == 200 and 'routes' in response.json():
@@ -708,9 +708,9 @@ def find_cargo_routes(plane, hub_iata_code, limit=1):
                             return routes
                     except Exception as e:
                         LOGGER.exception(
-                            'Error processing a route from am4tools', e)
+                            'Error processing a route from am4help', e)
         except Exception as e:
-            LOGGER.exception('Error getting routes from am4tools', e)
+            LOGGER.exception('Error getting routes from am4help', e)
     return routes
 
 

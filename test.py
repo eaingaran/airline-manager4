@@ -201,6 +201,8 @@ def check_available_380_routes():
 
     for hub in hubs:
         routes = am4.find_pax_routes(plane, hub['iata'], plane_details, 1000)
+        for k, v in routes.items():
+            print(k, v)
         all_routes.extend(routes)
     
     print(f'found {len(all_routes)} routes for A380-800')
@@ -262,8 +264,17 @@ def check_plane_profits(aircraft_type_id):
     for plane in sorted_plane_data:
         print(f'{plane["name"]} bought {plane["age"]} has an average revenue of {plane["avg_revenue"]} (max: {plane["max"]} and min: {plane["min"]})')
 
+
+def validate_seat_configuration():
+    planes = am4.get_pax_plane_details()
+
+    trips = math.ceil(23/(route['distance']/(plane['engine']['speed'] * 1.1)))
+    
+    e, b, f = am4.get_seat_configuration(arr, dep, 600, trips)
+
+
 if __name__ == '__main__':
-    am4.username = os.getenv("AM_USERNAME", "")
+    am4.username = os.getenv("AM_USER", "")
     am4.password = os.getenv("AM_PASS", "")
     am4.fuel_price_threshold = '100'
     am4.co2_price_threshold = '100'
@@ -293,8 +304,9 @@ if __name__ == '__main__':
     # check_available_380_routes()
     # check_plane_profits(344) # 344 308
     # print(am4.get_airline_status())
-    pax_rep, cargo_rep = am4.get_reputation()
-    print(pax_rep, cargo_rep)
+    # pax_rep, cargo_rep = am4.get_reputation()
+    # print(pax_rep, cargo_rep)
+    validate_seat_configuration()
     
     am4.logout()
 
